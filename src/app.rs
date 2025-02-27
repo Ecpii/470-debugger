@@ -13,6 +13,7 @@ pub struct App {
     /// Is the application running?
     running: bool,
     snapshots: Snapshots,
+    watch_list: Vec<String>,
 }
 
 impl App {
@@ -21,6 +22,8 @@ impl App {
         Self {
             running: false,
             snapshots: Snapshots::new().unwrap(),
+            // watch_list: Vec::new(),
+            watch_list: vec!["res_station_tb.DUT.rs_input_valid".to_string()],
         }
     }
 
@@ -47,18 +50,18 @@ impl App {
             snapshot.clock_count, snapshot.time
         );
 
-        let name = ["testbench", "verisimpleV", "id_packet", "PC"];
-        let pc_code = self.snapshots.get_var(&name);
-
-        text.push_str(&format!(
-            "PC: {:?}",
-            snapshot.variables.get(&pc_code).unwrap()
-        ));
+        for name in self.watch_list.iter() {
+            text.push_str(&format!(
+                "{}: {}",
+                name,
+                self.snapshots.get_var(name).unwrap()
+            ));
+        }
 
         let instructions = Line::from(vec![
-            " Decrement ".into(),
+            " Back one timestep ".into(),
             "<Left>".blue().bold(),
-            " Increment ".into(),
+            " Forward one timestep ".into(),
             "<Right>".blue().bold(),
             " Quit ".into(),
             "<Q> ".blue().bold(),

@@ -1,4 +1,5 @@
 use im::HashMap;
+use std::fmt::Display;
 use std::io::BufReader;
 use std::io::ErrorKind::InvalidInput;
 use std::{fs::File, io};
@@ -8,6 +9,19 @@ use vcd::{self, Header, IdCode, Value, Vector};
 pub enum VerilogValue {
     Scalar(Value),
     Vector(Vector),
+}
+
+impl Display for VerilogValue {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            VerilogValue::Scalar(value) => {
+                write!(f, "{}", value)
+            }
+            VerilogValue::Vector(vector) => {
+                write!(f, "{}", vector)
+            }
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -26,12 +40,12 @@ pub struct Snapshots {
 
 impl Snapshots {
     pub fn new() -> io::Result<Self> {
-        let file = File::open("sampler.vcd")?;
+        let file = File::open("rs.vcd")?;
         let mut parser = vcd::Parser::new(BufReader::new(file));
         let header = parser.parse_header()?;
 
         let clock = header
-            .find_var(&["testbench", "clock"])
+            .find_var(&["res_station_tb", "clock"])
             .ok_or_else(|| io::Error::new(InvalidInput, "no wire testbench.clock"))
             .unwrap()
             .code;
@@ -102,12 +116,10 @@ impl Snapshots {
         false
     }
 
-    pub fn get_var<S>(&self, var_name: &[S]) -> IdCode
-    where
-        S: std::borrow::Borrow<str>,
-    {
-        let var_id = self.header.find_var(var_name);
-        var_id.unwrap().code
+    pub fn get_var(&self, var_name: &str) -> Option<&VerilogValue> {
+        let name_list: Vec<_> = var_name.split('.').collect();
+        let var_id = self.header.find_var(&name_list).unwrap().code;
+        self.shots[self.index].variables.get(&var_id)
     }
 }
 
