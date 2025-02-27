@@ -1,0 +1,13 @@
+[package]
+name = "debugger"
+version = "0.1.0"
+authors = ["Ecpi <28408948+Ecpii@users.noreply.github.com>"]
+license = "MIT"
+edition = "2021"
+
+[dependencies]
+crossterm = "0.28.1"
+ratatui = "0.29.0"
+color-eyre = "0.6.3"
+vcd = "0.7.0"
+im = "15.1.0"
