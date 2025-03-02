@@ -1,26 +1,18 @@
 use std::collections::HashMap;
 
-use indicium::simple::{AutocompleteType, SearchIndex, SearchIndexBuilder, SearchType};
+use simsearch::{SearchOptions, SimSearch};
 use vcd::{Header, IdCode, Scope, ScopeItem};
 
 use crate::trace_dbg;
 
 pub struct VarIndex {
     pub vars: HashMap<String, IdCode>,
-    pub index: SearchIndex<String>,
+    pub engine: SimSearch<String>,
 }
 
 impl VarIndex {
     pub fn from_header(header: Header) -> Self {
         let mut vars = HashMap::new();
-        let mut index = SearchIndexBuilder::default()
-            .search_type(SearchType::And)
-            .autocomplete_type(AutocompleteType::Context)
-            .split_pattern(Some(vec!['.']))
-            .min_keyword_len(0)
-            // .split_pattern(None)
-            .exclude_keywords(None)
-            .build();
 
         let mut to_search = Vec::<(String, Scope)>::new();
 
@@ -34,6 +26,8 @@ impl VarIndex {
             to_search.push((s.identifier.clone(), s.clone()))
         }
 
+        let mut engine = SimSearch::new_with(SearchOptions::new().levenshtein(true).threshold(0.0));
+
         while let Some((prefix, next)) = to_search.pop() {
             for scope_item in next.items {
                 match scope_item {
@@ -43,7 +37,7 @@ impl VarIndex {
                     }
                     ScopeItem::Var(var) => {
                         let name = prefix.clone() + "." + &var.reference;
-                        index.insert(&name, &name);
+                        engine.insert(name.clone(), &name);
                         trace_dbg!(&name);
                         vars.insert(name, var.code);
                     }
@@ -51,7 +45,7 @@ impl VarIndex {
                 }
             }
         }
-        Self { vars, index }
+        Self { vars, engine }
     }
 
     pub fn get(&self, query: &str) -> Option<IdCode> {

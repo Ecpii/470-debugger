@@ -129,7 +129,7 @@ impl Snapshots {
     }
 
     pub fn autocomplete_var(&self, var_name: &str) -> Vec<String> {
-        self.var_index.index.autocomplete(var_name)
+        self.var_index.engine.search(var_name)
     }
 }
 
