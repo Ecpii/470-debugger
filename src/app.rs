@@ -9,7 +9,7 @@ use ratatui::{
 };
 use tui_input::{backend::crossterm::EventHandler, Input};
 
-use crate::snapshots::Snapshots;
+use crate::{snapshots::Snapshots, trace_dbg};
 
 pub struct App {
     /// Is the application running?
@@ -87,8 +87,11 @@ impl App {
         frame.render_widget(Paragraph::new(text).block(block).centered(), frame.area());
 
         if self.show_popup {
+            let text = self.search_input.value().to_owned();
+            let matches = self.snapshots.autocomplete_var(&text).join("\n");
+            trace_dbg!(&matches);
             let block = Block::bordered().title("Popup");
-            let input = Paragraph::new(self.search_input.value()).block(block);
+            let input = Paragraph::new(text + "\n" + &matches).block(block);
             let area = popup_area(frame.area(), 60, 20);
             frame.render_widget(Clear, area); //this clears out the background
             frame.render_widget(input, area);

@@ -3,7 +3,9 @@ use std::fmt::Display;
 use std::io::BufReader;
 use std::io::ErrorKind::InvalidInput;
 use std::{fs::File, io};
-use vcd::{self, Header, IdCode, Value, Vector};
+use vcd::{self, Header, IdCode, ScopeItem, Value, Vector};
+
+use crate::var_index::VarIndex;
 
 #[derive(Debug, Clone)]
 pub enum VerilogValue {
@@ -33,8 +35,7 @@ pub struct Snapshot {
 
 pub struct Snapshots {
     shots: Vec<Snapshot>,
-    header: Header,
-    // parser: Parser<BufReader<File>>,
+    var_index: VarIndex,
     index: usize,
 }
 
@@ -49,6 +50,8 @@ impl Snapshots {
             .ok_or_else(|| io::Error::new(InvalidInput, "no wire testbench.clock"))
             .unwrap()
             .code;
+
+        let var_index = VarIndex::from_header(header);
 
         let mut shots = Vec::new();
 
@@ -91,7 +94,7 @@ impl Snapshots {
 
         Ok(Snapshots {
             shots,
-            header,
+            var_index,
             index: 0,
         })
     }
@@ -117,19 +120,25 @@ impl Snapshots {
     }
 
     pub fn get_var(&self, var_name: &str) -> Option<&VerilogValue> {
-        let name_list: Vec<_> = var_name.split('.').collect();
-        let var = self.header.find_var(&name_list)?;
-        self.shots[self.index].variables.get(&var.code)
+        // let name_list: Vec<_> = var_name.split('.').collect();
+        // let var = self.header.find_var(&name_list)?;
+        // self.shots[self.index].variables.get(&var.code)
+
+        let code = self.var_index.get(var_name)?;
+        self.shots[self.index].variables.get(&code)
+    }
+
+    pub fn autocomplete_var(&self, var_name: &str) -> Vec<String> {
+        self.var_index.index.autocomplete(var_name)
     }
 }
 
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-//     #[test]
-//     fn scratch() {
-//         let file = File::open("sampler.vcd").unwrap();
-//         let mut parser = vcd::Parser::new(BufReader::new(file));
-//     }
-// }
+    #[test]
+    fn scratch() {
+        let _ = Snapshots::new();
+    }
+}
