@@ -1,11 +1,13 @@
 use color_eyre::Result;
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use ratatui::{
+    layout::{Constraint, Flex, Layout, Rect},
     style::Stylize,
     text::Line,
-    widgets::{Block, Paragraph},
+    widgets::{Block, Clear, Paragraph},
     DefaultTerminal, Frame,
 };
+use tui_input::{backend::crossterm::EventHandler, Input};
 
 use crate::snapshots::Snapshots;
 
@@ -14,6 +16,17 @@ pub struct App {
     running: bool,
     snapshots: Snapshots,
     watch_list: Vec<String>,
+    show_popup: bool,
+    search_input: Input,
+}
+
+/// helper function to create a centered rect using up certain percentage of the available rect `r`
+fn popup_area(area: Rect, percent_x: u16, percent_y: u16) -> Rect {
+    let vertical = Layout::vertical([Constraint::Percentage(percent_y)]).flex(Flex::Center);
+    let horizontal = Layout::horizontal([Constraint::Percentage(percent_x)]).flex(Flex::Center);
+    let [area] = vertical.areas(area);
+    let [area] = horizontal.areas(area);
+    area
 }
 
 impl App {
@@ -24,6 +37,8 @@ impl App {
             snapshots: Snapshots::new().unwrap(),
             // watch_list: Vec::new(),
             watch_list: vec!["res_station_tb.DUT.rs_input_valid".to_string()],
+            show_popup: false,
+            search_input: Input::default(),
         }
     }
 
@@ -69,7 +84,19 @@ impl App {
         .centered();
 
         let block = Block::bordered().title(title).title_bottom(instructions);
-        frame.render_widget(Paragraph::new(text).block(block).centered(), frame.area())
+        frame.render_widget(Paragraph::new(text).block(block).centered(), frame.area());
+
+        if self.show_popup {
+            let block = Block::bordered().title("Popup");
+            let input = Paragraph::new(self.search_input.value()).block(block);
+            let area = popup_area(frame.area(), 60, 20);
+            frame.render_widget(Clear, area); //this clears out the background
+            frame.render_widget(input, area);
+            frame.set_cursor_position((
+                area.x + (self.search_input.visual_cursor()) as u16 + 1,
+                area.y + 1,
+            ));
+        }
     }
 
     /// Reads the crossterm events and updates the state of [`App`].
@@ -89,12 +116,31 @@ impl App {
 
     /// Handles the key events and updates the state of [`App`].
     fn on_key_event(&mut self, key: KeyEvent) {
+        if self.show_popup {
+            match (key.modifiers, key.code) {
+                (_, KeyCode::Esc | KeyCode::Char('/')) => {
+                    self.show_popup = false;
+                }
+                (_, KeyCode::Enter) => {
+                    self.search_input.reset();
+                    self.show_popup = false;
+                }
+                // (_, KeyCode::Char(_)) => {
+                // }
+                _ => {
+                    self.search_input.handle_event(&Event::Key(key));
+                }
+            }
+            return;
+        }
+
         match (key.modifiers, key.code) {
             (_, KeyCode::Esc | KeyCode::Char('q'))
             | (KeyModifiers::CONTROL, KeyCode::Char('c') | KeyCode::Char('C')) => self.quit(),
             // Add other key handlers here.
             (_, KeyCode::Left) => self.handle_left_key(),
             (_, KeyCode::Right) => self.handle_right_key(),
+            (_, KeyCode::Char('/')) => self.show_popup = !self.show_popup,
             _ => {}
         }
     }
