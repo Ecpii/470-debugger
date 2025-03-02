@@ -66,11 +66,11 @@ impl App {
         );
 
         for name in self.watch_list.iter() {
-            text.push_str(&format!(
-                "{}: {}",
-                name,
-                self.snapshots.get_var(name).unwrap()
-            ));
+            if let Some(value) = self.snapshots.get_var(name) {
+                text.push_str(&format!("{}: {}\n", name, value));
+            } else {
+                text.push_str(&format!("{name} not found!\n"));
+            }
         }
 
         let instructions = Line::from(vec![
@@ -122,6 +122,10 @@ impl App {
                     self.show_popup = false;
                 }
                 (_, KeyCode::Enter) => {
+                    let value = self.search_input.value().trim();
+                    if !value.is_empty() {
+                        self.watch_list.push(value.to_owned());
+                    }
                     self.search_input.reset();
                     self.show_popup = false;
                 }

@@ -118,8 +118,8 @@ impl Snapshots {
 
     pub fn get_var(&self, var_name: &str) -> Option<&VerilogValue> {
         let name_list: Vec<_> = var_name.split('.').collect();
-        let var_id = self.header.find_var(&name_list).unwrap().code;
-        self.shots[self.index].variables.get(&var_id)
+        let var = self.header.find_var(&name_list)?;
+        self.shots[self.index].variables.get(&var.code)
     }
 }
 
