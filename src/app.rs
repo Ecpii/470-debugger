@@ -1,3 +1,5 @@
+use std::cmp::min;
+
 use color_eyre::Result;
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use ratatui::{
@@ -18,6 +20,7 @@ pub struct App {
     watch_list: Vec<String>,
     show_popup: bool,
     search_input: Input,
+    search_query: String,
     search_list_state: ListState,
     search_matches: Vec<String>,
 }
@@ -41,6 +44,7 @@ impl App {
             watch_list: vec!["res_station_tb.DUT.rs_input_valid".to_string()],
             show_popup: false,
             search_input: Input::default(),
+            search_query: String::new(),
             search_list_state: ListState::default(),
             search_matches: Vec::new(),
         }
@@ -145,15 +149,28 @@ impl App {
                     self.show_popup = false;
                 }
                 (_, KeyCode::Up) => {
-                    self.search_list_state.select_previous();
+                    if let Some(selected) = self.search_list_state.selected() {
+                        if selected == 0 {
+                            self.search_list_state.select(None);
+                            self.search_input = Input::new(self.search_query.clone());
+                        } else {
+                            self.search_list_state.select(Some(selected - 1));
+                            self.search_input =
+                                Input::new(self.search_matches[selected - 1].clone());
+                        }
+                    }
                 }
                 (_, KeyCode::Down) => {
                     self.search_list_state.select_next();
+                    let selected = self.search_list_state.selected().unwrap();
+                    let index = min(selected, self.search_matches.len() - 1);
+                    self.search_input = Input::new(self.search_matches[index].clone());
                 }
                 // (_, KeyCode::Char(_)) => {
                 // }
                 _ => {
                     self.search_input.handle_event(&Event::Key(key));
+                    self.search_query = self.search_input.value().to_owned();
                     self.search_matches =
                         self.snapshots.autocomplete_var(self.search_input.value());
                 }

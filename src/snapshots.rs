@@ -3,7 +3,7 @@ use std::fmt::Display;
 use std::io::BufReader;
 use std::io::ErrorKind::InvalidInput;
 use std::{fs::File, io};
-use vcd::{self, Header, IdCode, ScopeItem, Value, Vector};
+use vcd::{self, IdCode, Value, Vector};
 
 use crate::var_index::VarIndex;
 

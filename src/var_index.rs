@@ -26,7 +26,7 @@ impl VarIndex {
             to_search.push((s.identifier.clone(), s.clone()))
         }
 
-        let mut engine = SimSearch::new_with(SearchOptions::new().levenshtein(true).threshold(0.0));
+        let mut engine = SimSearch::new_with(SearchOptions::new().levenshtein(true).threshold(0.1));
 
         while let Some((prefix, next)) = to_search.pop() {
             for scope_item in next.items {
