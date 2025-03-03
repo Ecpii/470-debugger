@@ -2,9 +2,9 @@ use color_eyre::Result;
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use ratatui::{
     layout::{Constraint, Flex, Layout, Rect},
-    style::Stylize,
+    style::{Color, Style, Stylize},
     text::Line,
-    widgets::{Block, Clear, Paragraph},
+    widgets::{Block, Clear, List, ListState, Paragraph},
     DefaultTerminal, Frame,
 };
 use tui_input::{backend::crossterm::EventHandler, Input};
@@ -18,6 +18,8 @@ pub struct App {
     watch_list: Vec<String>,
     show_popup: bool,
     search_input: Input,
+    search_list_state: ListState,
+    search_matches: Vec<String>,
 }
 
 /// helper function to create a centered rect using up certain percentage of the available rect `r`
@@ -39,6 +41,8 @@ impl App {
             watch_list: vec!["res_station_tb.DUT.rs_input_valid".to_string()],
             show_popup: false,
             search_input: Input::default(),
+            search_list_state: ListState::default(),
+            search_matches: Vec::new(),
         }
     }
 
@@ -74,6 +78,8 @@ impl App {
         }
 
         let instructions = Line::from(vec![
+            " Watch variable ".into(),
+            "</>".blue().bold(),
             " Back one timestep ".into(),
             "<Left>".blue().bold(),
             " Forward one timestep ".into(),
@@ -87,14 +93,20 @@ impl App {
         frame.render_widget(Paragraph::new(text).block(block).centered(), frame.area());
 
         if self.show_popup {
-            let text = self.search_input.value().to_owned();
-            let matches = self.snapshots.autocomplete_var(&text).join("\n");
-            trace_dbg!(&matches);
-            let block = Block::bordered().title("Popup");
-            let input = Paragraph::new(text + "\n" + &matches).block(block);
+            let block = Block::bordered().title("Watch Variable...");
+            let search = Line::from(self.search_input.value());
+            let list = List::new(self.search_matches.clone())
+                .highlight_style(Style::new().bg(Color::Blue));
+
             let area = popup_area(frame.area(), 60, 20);
+            let vertical = Layout::vertical([Constraint::Length(1), Constraint::Fill(1)]);
+            let inner_area = block.inner(area);
+            let [search_area, match_area] = vertical.areas(inner_area);
+
             frame.render_widget(Clear, area); //this clears out the background
-            frame.render_widget(input, area);
+            frame.render_widget(block, area);
+            frame.render_widget(search, search_area);
+            frame.render_stateful_widget(list, match_area, &mut self.search_list_state);
             frame.set_cursor_position((
                 area.x + (self.search_input.visual_cursor()) as u16 + 1,
                 area.y + 1,
@@ -132,10 +144,18 @@ impl App {
                     self.search_input.reset();
                     self.show_popup = false;
                 }
+                (_, KeyCode::Up) => {
+                    self.search_list_state.select_previous();
+                }
+                (_, KeyCode::Down) => {
+                    self.search_list_state.select_next();
+                }
                 // (_, KeyCode::Char(_)) => {
                 // }
                 _ => {
                     self.search_input.handle_event(&Event::Key(key));
+                    self.search_matches =
+                        self.snapshots.autocomplete_var(self.search_input.value());
                 }
             }
             return;
