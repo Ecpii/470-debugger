@@ -2,6 +2,7 @@ pub use app::App;
 
 pub mod app;
 mod logging;
+pub mod rs;
 pub mod snapshots;
 pub mod var_index;
 

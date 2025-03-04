@@ -13,6 +13,31 @@ pub enum VerilogValue {
     Vector(Vector),
 }
 
+impl VerilogValue {
+    pub fn as_decimal(&self) -> String {
+        match self {
+            VerilogValue::Scalar(value) => {
+                format!("{}", value)
+            }
+            VerilogValue::Vector(vector) => {
+                let mut bits = Vec::new();
+
+                for item in vector.iter() {
+                    bits.push(match item {
+                        Value::V0 => 0,
+                        Value::V1 => 1,
+                        Value::X => return String::from("X"),
+                        Value::Z => return String::from("Z"),
+                    })
+                }
+
+                let val = bits.iter().fold(0, |res, new| (res << 1) + new);
+                val.to_string()
+            }
+        }
+    }
+}
+
 impl Display for VerilogValue {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {

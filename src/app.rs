@@ -11,7 +11,7 @@ use ratatui::{
 };
 use tui_input::{backend::crossterm::EventHandler, Input};
 
-use crate::{snapshots::Snapshots, trace_dbg};
+use crate::{rs::RSTable, snapshots::Snapshots, trace_dbg};
 
 pub struct App {
     /// Is the application running?
@@ -37,6 +37,7 @@ fn popup_area(area: Rect, percent_x: u16, percent_y: u16) -> Rect {
 impl App {
     /// Construct a new instance of [`App`].
     pub fn new() -> Self {
+        trace_dbg!("start");
         Self {
             running: false,
             snapshots: Snapshots::new().unwrap(),
@@ -94,7 +95,12 @@ impl App {
         .centered();
 
         let block = Block::bordered().title(title).title_bottom(instructions);
-        frame.render_widget(Paragraph::new(text).block(block).centered(), frame.area());
+        let [top_half, bottom_half] =
+            Layout::vertical([Constraint::Percentage(50), Constraint::Percentage(50)])
+                .areas(frame.area());
+
+        frame.render_widget(Paragraph::new(text).block(block).centered(), top_half);
+        frame.render_stateful_widget(RSTable::new(), bottom_half, &mut self.snapshots);
 
         if self.show_popup {
             let block = Block::bordered().title("Watch Variable...");
