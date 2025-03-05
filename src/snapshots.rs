@@ -36,6 +36,13 @@ impl VerilogValue {
             }
         }
     }
+
+    pub fn is_high(&self) -> bool {
+        match self {
+            VerilogValue::Scalar(value) => matches!(value, Value::V1),
+            VerilogValue::Vector(vector) => vector.iter().all(|x| matches!(x, Value::V1)),
+        }
+    }
 }
 
 impl Display for VerilogValue {
@@ -111,8 +118,8 @@ impl Snapshots {
                         .variables
                         .insert(id_code, VerilogValue::Vector(value));
                 }
-                x => {
-                    dbg!(&x);
+                _ => {
+                    // dbg!(&x);
                 }
             }
         }

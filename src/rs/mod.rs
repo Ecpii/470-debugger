@@ -63,9 +63,10 @@ impl StatefulWidget for RSTable {
                 let value_str = match *key {
                     "rs1_tag" => {
                         let plus_key = format!("{BASE}.entries[{i}].rs1_ready");
+                        trace_dbg!(&plus_key);
                         let plus = snapshots
                             .get_var(&plus_key)
-                            .is_some_and(|val| matches!(val, &VerilogValue::Scalar(Value::V1)));
+                            .is_some_and(|val| val.is_high());
 
                         value.as_decimal() + if plus { "+" } else { "" }
                     }

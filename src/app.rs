@@ -97,9 +97,11 @@ impl App {
         let block = Block::bordered().title(title).title_bottom(instructions);
         let [top_half, bottom_half] =
             Layout::vertical([Constraint::Percentage(50), Constraint::Percentage(50)])
-                .areas(frame.area());
+                .areas(block.inner(frame.area()));
 
-        frame.render_widget(Paragraph::new(text).block(block).centered(), top_half);
+        frame.render_widget(block, frame.area());
+
+        frame.render_widget(Paragraph::new(text).centered(), top_half);
         frame.render_stateful_widget(RSTable::new(), bottom_half, &mut self.snapshots);
 
         if self.show_popup {
