@@ -7,6 +7,13 @@ use vcd::{self, IdCode, Value, Vector};
 
 use crate::var_index::VarIndex;
 
+pub enum DifferenceType {
+    Addition,
+    Clearance,
+}
+
+type Differences = HashMap<IdCode, DifferenceType>;
+
 #[derive(Debug, Clone)]
 pub enum VerilogValue {
     Scalar(Value),
@@ -41,6 +48,20 @@ impl VerilogValue {
         match self {
             VerilogValue::Scalar(value) => matches!(value, Value::V1),
             VerilogValue::Vector(vector) => vector.iter().all(|x| matches!(x, Value::V1)),
+        }
+    }
+
+    pub fn is_low(&self) -> bool {
+        match self {
+            VerilogValue::Scalar(value) => matches!(value, Value::V0),
+            VerilogValue::Vector(vector) => vector.iter().all(|x| matches!(x, Value::V0)),
+        }
+    }
+
+    pub fn is_unknown(&self) -> bool {
+        match self {
+            VerilogValue::Scalar(value) => matches!(value, Value::X | Value::Z),
+            VerilogValue::Vector(vector) => vector.iter().any(|x| matches!(x, Value::X | Value::Z)),
         }
     }
 }
@@ -162,6 +183,10 @@ impl Snapshots {
 
     pub fn autocomplete_var(&self, var_name: &str) -> Vec<String> {
         self.var_index.engine.search(var_name)
+    }
+
+    pub fn differences(&self) -> Differences {
+        todo!()
     }
 }
 

@@ -1,6 +1,9 @@
 use std::cmp::max;
 
-use ratatui::widgets::{Cell, Row, StatefulWidget, Table, Widget};
+use ratatui::{
+    style::Stylize,
+    widgets::{Cell, Row, StatefulWidget, Table, Widget},
+};
 use vcd::Value;
 
 use crate::{
@@ -10,6 +13,7 @@ use crate::{
 
 const RS_SZ: usize = 8;
 const BASE: &str = "res_station_tb.DUT";
+const KEYS: [&str; 6] = ["dest_tag", "rs1_tag", "rs2_tag", "bmask", "fu", "rob_num"];
 
 // struct Column {
 //   key: String,
@@ -23,6 +27,11 @@ impl RSTable {
     pub fn new() -> Self {
         Self {}
     }
+
+    // fn format_row(row: Vec<Cell>) -> Vec<Cell> {
+    // }
+
+    // fn format_row(query_base: String, snapshots: &Snapshots) -> Row {}
 
     // fn format_value(self, full_key: &str, key: &str, value: &VerilogValue) -> String {
     //     if key == "dest_tag" || key == "rob_num" {
@@ -46,20 +55,19 @@ impl StatefulWidget for RSTable {
         buf: &mut ratatui::prelude::Buffer,
         snapshots: &mut Self::State,
     ) {
-        let keys = ["dest_tag", "rs1_tag", "rs2_tag", "bmask", "fu", "rob_num"];
-        let header = Row::new(keys.iter().map(|&x| x.to_string() + ":"));
-        let mut widths: Vec<u16> = keys.iter().map(|x| x.len() as u16).collect();
+        let header = Row::new(KEYS.iter().map(|&x| x.to_string() + ":"));
+        let mut widths: Vec<u16> = KEYS.iter().map(|x| x.len() as u16).collect();
 
         let mut rows = Vec::new();
 
         for i in 0..RS_SZ {
-            let mut row: Vec<Cell> = vec![];
-            for (j, key) in keys.iter().enumerate() {
+            let mut row_cells: Vec<Cell> = vec![];
+            let mut is_valid = true;
+            for (j, key) in KEYS.iter().enumerate() {
                 let full_key = format!("{BASE}.entries[{i}].{key}");
                 trace_dbg!(&full_key);
                 let value = snapshots.get_var(&full_key).unwrap();
 
-                // let value_str = format!("{}", value);
                 let value_str = match *key {
                     "rs1_tag" => {
                         let plus_key = format!("{BASE}.entries[{i}].rs1_ready");
@@ -85,10 +93,18 @@ impl StatefulWidget for RSTable {
                 };
                 let width = value_str.len();
 
-                row.push(Cell::new(value_str));
+                row_cells.push(Cell::new(value_str));
                 widths[j] = max(widths[j], width as u16);
+
+                if *key == "fu" && (value.is_low() || value.is_unknown()) {
+                    is_valid = false
+                }
             }
-            rows.push(Row::new(row))
+            let mut row = Row::new(row_cells);
+            if is_valid {
+                row = row.on_green();
+            }
+            rows.push(row)
         }
 
         let table = Table::new(rows, widths).header(header);
