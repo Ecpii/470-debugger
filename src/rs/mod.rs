@@ -4,7 +4,6 @@ use ratatui::{
     style::Stylize,
     widgets::{Cell, Row, StatefulWidget, Table, Widget},
 };
-use vcd::Value;
 
 use crate::{
     snapshots::{Snapshots, VerilogValue},
@@ -14,18 +13,26 @@ use crate::{
 const RS_SZ: usize = 8;
 const BASE: &str = "res_station_tb.DUT";
 const KEYS: [&str; 6] = ["dest_tag", "rs1_tag", "rs2_tag", "bmask", "fu", "rob_num"];
-
-// struct Column {
-//   key: String,
-//   width: u16,
-//   format_fun: impl Fn -> String
-// }
+const FU_TYPES: [&str; 5] = ["NOP", "IALU", "LD", "STR", "MULT"];
 
 pub struct RSTable {}
 
 impl RSTable {
     pub fn new() -> Self {
         Self {}
+    }
+
+    fn format_fu(&self, value: &VerilogValue) -> String {
+        if value.is_unknown() {
+            return String::from("xxx");
+        }
+
+        // let VerilogValue::Vector(vec) = value else {
+        //     panic!("fu not a vector in vcd file!");
+        // };
+
+        let n = value.as_usize();
+        String::from(FU_TYPES.get(n).copied().unwrap_or("<invalid>"))
     }
 }
 
@@ -38,7 +45,7 @@ impl StatefulWidget for RSTable {
         buf: &mut ratatui::prelude::Buffer,
         snapshots: &mut Self::State,
     ) {
-        let header = Row::new(KEYS.iter().map(|&x| x.to_string() + ":"));
+        let header = Row::new(KEYS);
         let mut widths: Vec<u16> = KEYS.iter().map(|x| x.len() as u16).collect();
 
         let mut rows = Vec::new();
@@ -47,11 +54,13 @@ impl StatefulWidget for RSTable {
             let mut row_cells: Vec<Cell> = vec![];
             let mut is_valid = true;
             let row_base = format!("{BASE}.entries[{i}]");
+
             for (j, key) in KEYS.iter().enumerate() {
                 let full_key = format!("{row_base}.{key}");
                 trace_dbg!(&full_key);
                 let value = snapshots.get_var(&full_key).unwrap();
 
+                // string that gets displayed in the cell section
                 let value_str = match *key {
                     "rs1_tag" => {
                         let plus_key = format!("{row_base}.rs1_ready");
@@ -71,6 +80,7 @@ impl StatefulWidget for RSTable {
                         value.as_decimal() + if plus { "+" } else { "" }
                     }
                     "dest_tag" | "rob_num" => value.as_decimal(),
+                    "fu" => self.format_fu(value),
                     _ => {
                         format!("{}", value)
                     }
@@ -87,6 +97,7 @@ impl StatefulWidget for RSTable {
 
             let mut row = Row::new(row_cells);
 
+            // formatting, colors
             if is_valid {
                 let rs1_ready = snapshots
                     .get_var(&format!("{row_base}.rs1_ready"))

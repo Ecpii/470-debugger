@@ -44,6 +44,28 @@ impl VerilogValue {
         }
     }
 
+    pub fn as_usize(&self) -> usize {
+        match self {
+            VerilogValue::Scalar(value) => match value {
+                Value::V1 => 1,
+                _ => 0,
+            },
+            VerilogValue::Vector(vector) => {
+                let mut bits = Vec::new();
+
+                for item in vector.iter() {
+                    bits.push(match item {
+                        Value::V1 => 1,
+                        _ => 0,
+                    })
+                }
+
+                let val = bits.iter().fold(0, |res, new| (res << 1) + new);
+                val
+            }
+        }
+    }
+
     pub fn is_high(&self) -> bool {
         match self {
             VerilogValue::Scalar(value) => matches!(value, Value::V1),
