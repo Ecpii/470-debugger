@@ -166,11 +166,12 @@ impl Snapshots {
                 }
             }
         }
+        let index = shots.len() - 1;
 
         Ok(Snapshots {
             shots,
             var_index,
-            index: 0,
+            index,
         })
     }
 
