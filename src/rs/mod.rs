@@ -27,23 +27,6 @@ impl RSTable {
     pub fn new() -> Self {
         Self {}
     }
-
-    // fn format_row(row: Vec<Cell>) -> Vec<Cell> {
-    // }
-
-    // fn format_row(query_base: String, snapshots: &Snapshots) -> Row {}
-
-    // fn format_value(self, full_key: &str, key: &str, value: &VerilogValue) -> String {
-    //     if key == "dest_tag" || key == "rob_num" {
-    //         value.as_decimal
-    //     } else if key == "rs1_tag" {
-    //       let plus =
-
-    //     } else if key == "rs2_tag" {
-    //     } else {
-    //         format!("{}", value)
-    //     }
-    // }
 }
 
 impl StatefulWidget for RSTable {
@@ -63,26 +46,27 @@ impl StatefulWidget for RSTable {
         for i in 0..RS_SZ {
             let mut row_cells: Vec<Cell> = vec![];
             let mut is_valid = true;
+            let row_base = format!("{BASE}.entries[{i}]");
             for (j, key) in KEYS.iter().enumerate() {
-                let full_key = format!("{BASE}.entries[{i}].{key}");
+                let full_key = format!("{row_base}.{key}");
                 trace_dbg!(&full_key);
                 let value = snapshots.get_var(&full_key).unwrap();
 
                 let value_str = match *key {
                     "rs1_tag" => {
-                        let plus_key = format!("{BASE}.entries[{i}].rs1_ready");
+                        let plus_key = format!("{row_base}.rs1_ready");
                         trace_dbg!(&plus_key);
                         let plus = snapshots
                             .get_var(&plus_key)
-                            .is_some_and(|val| val.is_high());
+                            .is_some_and(VerilogValue::is_high);
 
                         value.as_decimal() + if plus { "+" } else { "" }
                     }
                     "rs2_tag" => {
-                        let plus_key = format!("{BASE}.entries[{i}].rs2_ready");
+                        let plus_key = format!("{row_base}.rs2_ready");
                         let plus = snapshots
                             .get_var(&plus_key)
-                            .is_some_and(|val| matches!(val, &VerilogValue::Scalar(Value::V1)));
+                            .is_some_and(VerilogValue::is_high);
 
                         value.as_decimal() + if plus { "+" } else { "" }
                     }
@@ -100,10 +84,27 @@ impl StatefulWidget for RSTable {
                     is_valid = false
                 }
             }
+
             let mut row = Row::new(row_cells);
+
             if is_valid {
-                row = row.on_green();
+                let rs1_ready = snapshots
+                    .get_var(&format!("{row_base}.rs1_ready"))
+                    .is_some_and(VerilogValue::is_high);
+                let rs2_ready = snapshots
+                    .get_var(&format!("{row_base}.rs2_ready"))
+                    .is_some_and(VerilogValue::is_high);
+
+                // row = row.not_dim();
+                if rs1_ready && rs2_ready {
+                    row = row.on_green();
+                } else {
+                    // row = row.on_light_green()
+                }
+            } else {
+                row = row.dim();
             }
+
             rows.push(row)
         }
 
