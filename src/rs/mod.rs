@@ -2,7 +2,8 @@ use std::cmp::max;
 
 use ratatui::{
     style::Stylize,
-    widgets::{Cell, Row, StatefulWidget, Table, Widget},
+    text::Line,
+    widgets::{Block, Cell, Row, StatefulWidget, Table, Widget},
 };
 
 use crate::{
@@ -45,7 +46,7 @@ impl StatefulWidget for RSTable {
         buf: &mut ratatui::prelude::Buffer,
         snapshots: &mut Self::State,
     ) {
-        let header = Row::new(KEYS);
+        let header = Row::new(KEYS).bold().on_blue();
         let mut widths: Vec<u16> = KEYS.iter().map(|x| x.len() as u16).collect();
 
         let mut rows = Vec::new();
@@ -119,7 +120,9 @@ impl StatefulWidget for RSTable {
             rows.push(row)
         }
 
-        let table = Table::new(rows, widths).header(header);
+        let title = Line::from("Reservation Station").bold().centered();
+        let block = Block::bordered().title(title);
+        let table = Table::new(rows, widths).header(header).block(block);
         Widget::render(table, area, buf);
     }
 }
