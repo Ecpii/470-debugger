@@ -12,25 +12,35 @@ use crate::{snapshots::Snapshots, trace_dbg};
 
 const KEYS: [&str; 4] = ["t", "t_old", "bmask", "retire_rdy"];
 
+#[derive(Clone)]
 pub struct ROBTable {
     base: String,
     size: usize,
 }
 
+fn matches_rob_entry(base: &str, snapshots: &Snapshots) -> bool {
+    KEYS.iter()
+        .all(|key| snapshots.get_var(&format!("{base}.{key}")).is_some())
+}
+
 impl ROBTable {
-    pub fn new(base: &str, snapshots: &Snapshots) -> Self {
+    pub fn new(base: &str, snapshots: &Snapshots) -> Option<Self> {
         let mut i = 0;
         let mut name = format!("{base}.entries[{i}]");
 
-        while snapshots.get_var(&name).is_some() {
+        if !(matches_rob_entry(&name, snapshots)) {
+            return None;
+        }
+
+        while snapshots.get_scope(&name).is_some() {
             i += 1;
             name = format!("{base}.entries[{i}]");
         }
 
-        Self {
+        Some(Self {
             base: base.to_owned(),
             size: i,
-        }
+        })
     }
 }
 

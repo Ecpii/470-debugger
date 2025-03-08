@@ -3,8 +3,9 @@ use std::fmt::Display;
 use std::io::BufReader;
 use std::io::ErrorKind::InvalidInput;
 use std::{fs::File, io};
-use vcd::{self, IdCode, Value, Vector};
+use vcd::{self, Header, IdCode, Scope, ScopeItem, Value, Vector};
 
+use crate::trace_dbg;
 use crate::var_index::VarIndex;
 
 pub enum DifferenceType {
@@ -111,6 +112,7 @@ pub struct Snapshot {
 pub struct Snapshots {
     shots: Vec<Snapshot>,
     var_index: VarIndex,
+    pub header: Header,
     index: usize,
 }
 
@@ -126,7 +128,7 @@ impl Snapshots {
             .unwrap()
             .code;
 
-        let var_index = VarIndex::from_header(header);
+        let var_index = VarIndex::from_header(&header);
 
         let mut shots = Vec::new();
 
@@ -171,6 +173,7 @@ impl Snapshots {
         Ok(Snapshots {
             shots,
             var_index,
+            header,
             index,
         })
     }
@@ -195,6 +198,18 @@ impl Snapshots {
         false
     }
 
+    pub fn get_base(&self) -> String {
+        // trace_dbg!(&self.header.items);
+        for scope_item in self.header.items.iter() {
+            if let ScopeItem::Scope(s) = scope_item {
+                if !s.identifier.starts_with("_") {
+                    return s.identifier.clone();
+                }
+            }
+        }
+        panic!("Couldn't find top level testbench in VCD file!")
+    }
+
     pub fn get_var(&self, var_name: &str) -> Option<&VerilogValue> {
         // let name_list: Vec<_> = var_name.split('.').collect();
         // let var = self.header.find_var(&name_list)?;
@@ -202,6 +217,11 @@ impl Snapshots {
 
         let code = self.var_index.get(var_name)?;
         self.shots[self.index].variables.get(&code)
+    }
+
+    pub fn get_scope(&self, scope_name: &str) -> Option<&Scope> {
+        let name_list: Vec<_> = scope_name.split('.').collect();
+        self.header.find_scope(name_list.as_slice())
     }
 
     pub fn autocomplete_var(&self, var_name: &str) -> Vec<String> {

@@ -2,9 +2,8 @@ pub use app::App;
 
 pub mod app;
 mod logging;
-pub mod rob;
-pub mod rs;
 pub mod snapshots;
+pub mod structures;
 pub mod var_index;
 
 fn main() -> color_eyre::Result<()> {

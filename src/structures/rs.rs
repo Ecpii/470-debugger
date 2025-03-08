@@ -11,16 +11,41 @@ use crate::{
     trace_dbg,
 };
 
-const RS_SZ: usize = 8;
-const BASE: &str = "res_station_tb.DUT";
 const KEYS: [&str; 6] = ["dest_tag", "rs1_tag", "rs2_tag", "bmask", "fu", "rob_num"];
 const FU_TYPES: [&str; 5] = ["NOP", "IALU", "LD", "STR", "MULT"];
 
-pub struct RSTable {}
+#[derive(Clone, Debug)]
+pub struct RSTable {
+    base: String,
+    size: usize,
+}
+
+fn matches_rs_entry(base: &str, snapshots: &Snapshots) -> bool {
+    KEYS.iter()
+        .all(|key| snapshots.get_var(&format!("{base}.{key}")).is_some())
+}
 
 impl RSTable {
-    pub fn new() -> Self {
-        Self {}
+    pub fn new(base: &str, snapshots: &Snapshots) -> Option<Self> {
+        let mut i = 0;
+        let mut entry_name = format!("{base}.entries[{i}]");
+        trace_dbg!(&entry_name);
+
+        if !(matches_rs_entry(&entry_name, snapshots)) {
+            return None;
+        }
+
+        while snapshots.get_scope(&entry_name).is_some() {
+            i += 1;
+            entry_name = format!("{base}.entries[{i}]");
+            trace_dbg!(&entry_name);
+            trace_dbg!(&i);
+        }
+
+        Some(Self {
+            base: base.to_owned(),
+            size: i,
+        })
     }
 
     fn format_fu(&self, value: &VerilogValue) -> String {
@@ -51,10 +76,10 @@ impl StatefulWidget for RSTable {
 
         let mut rows = Vec::new();
 
-        for i in 0..RS_SZ {
+        for i in 0..self.size {
             let mut row_cells: Vec<Cell> = vec![];
             let mut is_valid = true;
-            let row_base = format!("{BASE}.entries[{i}]");
+            let row_base = format!("{}.entries[{i}]", self.base);
 
             for (j, key) in KEYS.iter().enumerate() {
                 let full_key = format!("{row_base}.{key}");
@@ -124,11 +149,5 @@ impl StatefulWidget for RSTable {
         let block = Block::bordered().title(title);
         let table = Table::new(rows, widths).header(header).block(block);
         Widget::render(table, area, buf);
-    }
-}
-
-impl Default for RSTable {
-    fn default() -> Self {
-        Self::new()
     }
 }

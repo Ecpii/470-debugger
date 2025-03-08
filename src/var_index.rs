@@ -11,7 +11,7 @@ pub struct VarIndex {
 }
 
 impl VarIndex {
-    pub fn from_header(header: Header) -> Self {
+    pub fn from_header(header: &Header) -> Self {
         let mut vars = HashMap::new();
 
         let mut to_search = Vec::<(String, Scope)>::new();

@@ -11,7 +11,7 @@ use ratatui::{
 };
 use tui_input::{backend::crossterm::EventHandler, Input};
 
-use crate::{rs::RSTable, snapshots::Snapshots, trace_dbg};
+use crate::{snapshots::Snapshots, structures::Structures, trace_dbg};
 
 pub struct App {
     /// Is the application running?
@@ -23,6 +23,7 @@ pub struct App {
     search_query: String,
     search_list_state: ListState,
     search_matches: Vec<String>,
+    structures: Structures,
 }
 
 /// helper function to create a centered rect using up certain percentage of the available rect `r`
@@ -38,16 +39,18 @@ impl App {
     /// Construct a new instance of [`App`].
     pub fn new() -> Self {
         trace_dbg!("start");
+        let snapshots = Snapshots::new().unwrap();
+        let structures = Structures::new(&snapshots);
         Self {
             running: false,
-            snapshots: Snapshots::new().unwrap(),
-            // watch_list: Vec::new(),
-            watch_list: vec!["res_station_tb.DUT.rs_input_valid".to_string()],
+            snapshots,
+            watch_list: Vec::new(),
             show_popup: false,
             search_input: Input::default(),
             search_query: String::new(),
             search_list_state: ListState::default(),
             search_matches: Vec::new(),
+            structures,
         }
     }
 
@@ -102,7 +105,7 @@ impl App {
         frame.render_widget(block, frame.area());
 
         frame.render_widget(Paragraph::new(text).centered(), top_half);
-        frame.render_stateful_widget(RSTable::new(), bottom_half, &mut self.snapshots);
+        frame.render_stateful_widget(self.structures.clone(), bottom_half, &mut self.snapshots);
 
         if self.show_popup {
             let block = Block::bordered().title("Watch Variable...");
