@@ -42,8 +42,10 @@ impl StatefulWidget for ROBTable {
     type State = Snapshots;
 
     fn render(self, area: Rect, buf: &mut Buffer, snapshots: &mut Self::State) {
-        let header = Row::new(KEYS).bold().on_blue();
-        let mut widths: Vec<u16> = KEYS.iter().map(|x| x.len() as u16).collect();
+        let mut header_strings = vec!["h/t"];
+        header_strings.extend_from_slice(&KEYS);
+        let mut widths: Vec<u16> = header_strings.iter().map(|x| x.len() as u16).collect();
+        let header = Row::new(header_strings).bold().on_blue();
 
         let mut rows = Vec::new();
 
@@ -59,6 +61,14 @@ impl StatefulWidget for ROBTable {
         for i in 0..self.size {
             let mut row_cells: Vec<Cell> = vec![];
             let row_base = format!("{}.entries[{i}]", self.base);
+
+            if i == head_index {
+                row_cells.push(Cell::new("h").bold())
+            } else if i == tail_index {
+                row_cells.push(Cell::new("t").bold())
+            } else {
+                row_cells.push(Cell::new(""))
+            }
 
             for (j, key) in KEYS.iter().enumerate() {
                 let full_key = format!("{row_base}.{key}");
@@ -88,6 +98,8 @@ impl StatefulWidget for ROBTable {
                 || (tail_index < head_index && !(tail_index < i && i < head_index))
             {
                 row = row.on_yellow()
+            } else {
+                row = row.dim()
             }
 
             rows.push(row)

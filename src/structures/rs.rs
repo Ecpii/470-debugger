@@ -27,13 +27,10 @@ impl RSTable {
 
         let mut i = 0;
         let mut entry_name = format!("{base}.entries[{i}]");
-        trace_dbg!(&entry_name);
 
         while snapshots.get_scope(&entry_name).is_some() {
             i += 1;
             entry_name = format!("{base}.entries[{i}]");
-            trace_dbg!(&entry_name);
-            trace_dbg!(&i);
         }
 
         Some(Self {

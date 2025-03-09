@@ -73,7 +73,7 @@ impl App {
         let title = Line::from("o3o Debugger").bold().blue().centered();
         let snapshot = self.snapshots.get().unwrap();
         let mut text = format!(
-            "Current Clock Cycle: {}\nCurrent Time: {}\n",
+            "Current Clock Cycle: {}  - Current Time: {}\n",
             snapshot.clock_count, snapshot.time
         );
 
@@ -98,9 +98,11 @@ impl App {
         .centered();
 
         let block = Block::bordered().title(title).title_bottom(instructions);
-        let [top_half, bottom_half] =
-            Layout::vertical([Constraint::Percentage(50), Constraint::Percentage(50)])
-                .areas(block.inner(frame.area()));
+        let [top_half, bottom_half] = Layout::vertical([
+            Constraint::Length((2 + self.watch_list.len()) as u16),
+            Constraint::Fill(1),
+        ])
+        .areas(block.inner(frame.area()));
 
         frame.render_widget(block, frame.area());
 
@@ -213,34 +215,3 @@ impl App {
         self.running = false;
     }
 }
-
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
-//     use ratatui::{buffer::Buffer, layout::Rect, style::Style};
-
-//     #[test]
-//     fn render() {
-//         let app = App::default();
-//         let mut buf = Buffer::empty(Rect::new(0, 0, 50, 4));
-
-//         app.render(buf.area, &mut buf);
-
-//         let mut expected = Buffer::with_lines(vec![
-//             "┏━━━━━━━━━━━━━━━━━ Counter Test ━━━━━━━━━━━━━━━━━┓",
-//             "┃                    Value: 0                    ┃",
-//             "┃                                                ┃",
-//             "┗━ Decrement <Left> Increment <Right> Quit <Q> ━━┛",
-//         ]);
-//         let title_style = Style::new().bold();
-//         let counter_style = Style::new().yellow();
-//         let key_style = Style::new().blue().bold();
-//         expected.set_style(Rect::new(18, 0, " Counter Test ".len(), 1), title_style);
-//         expected.set_style(Rect::new(28, 1, 1, 1), counter_style);
-//         expected.set_style(Rect::new(13, 3, 6, 1), key_style);
-//         expected.set_style(Rect::new(30, 3, 7, 1), key_style);
-//         expected.set_style(Rect::new(43, 3, 4, 1), key_style);
-
-//         assert_eq!(buf, expected);
-//     }
-// }
