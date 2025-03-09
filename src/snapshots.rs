@@ -5,7 +5,6 @@ use std::io::ErrorKind::InvalidInput;
 use std::{fs::File, io};
 use vcd::{self, Header, IdCode, Scope, ScopeItem, Value, Vector};
 
-use crate::trace_dbg;
 use crate::var_index::VarIndex;
 
 pub enum DifferenceType {
@@ -116,15 +115,28 @@ pub struct Snapshots {
     index: usize,
 }
 
+pub fn get_header_base(header: &Header) -> String {
+    for scope_item in header.items.iter() {
+        if let ScopeItem::Scope(s) = scope_item {
+            if !s.identifier.starts_with("_") {
+                return s.identifier.clone();
+            }
+        }
+    }
+    panic!("Couldn't find top level testbench in VCD file!")
+}
+
 impl Snapshots {
     pub fn new(filename: &str) -> io::Result<Self> {
         let file = File::open(filename)?;
         let mut parser = vcd::Parser::new(BufReader::new(file));
         let header = parser.parse_header()?;
 
+        let base = get_header_base(&header);
+
         let clock = header
-            .find_var(&["res_station_tb", "clock"])
-            .ok_or_else(|| io::Error::new(InvalidInput, "no wire testbench.clock"))
+            .find_var(&[base.as_str(), "clock"])
+            .ok_or_else(|| io::Error::new(InvalidInput, "couldn't find clock wire!"))
             .unwrap()
             .code;
 
@@ -199,15 +211,7 @@ impl Snapshots {
     }
 
     pub fn get_base(&self) -> String {
-        // trace_dbg!(&self.header.items);
-        for scope_item in self.header.items.iter() {
-            if let ScopeItem::Scope(s) = scope_item {
-                if !s.identifier.starts_with("_") {
-                    return s.identifier.clone();
-                }
-            }
-        }
-        panic!("Couldn't find top level testbench in VCD file!")
+        get_header_base(&self.header)
     }
 
     pub fn get_var(&self, var_name: &str) -> Option<&VerilogValue> {
