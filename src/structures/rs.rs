@@ -20,20 +20,14 @@ pub struct RSTable {
     size: usize,
 }
 
-fn matches_rs_entry(base: &str, snapshots: &Snapshots) -> bool {
-    KEYS.iter()
-        .all(|key| snapshots.get_var(&format!("{base}.{key}")).is_some())
-}
-
 impl RSTable {
     pub fn new(base: &str, snapshots: &Snapshots) -> Option<Self> {
+        // check that dbg_this_is_rs exists so we know base is an rs
+        snapshots.get_var(&format!("{base}.dbg_this_is_rs"))?;
+
         let mut i = 0;
         let mut entry_name = format!("{base}.entries[{i}]");
         trace_dbg!(&entry_name);
-
-        if !(matches_rs_entry(&entry_name, snapshots)) {
-            return None;
-        }
 
         while snapshots.get_scope(&entry_name).is_some() {
             i += 1;

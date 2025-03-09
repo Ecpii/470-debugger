@@ -18,19 +18,13 @@ pub struct ROBTable {
     size: usize,
 }
 
-fn matches_rob_entry(base: &str, snapshots: &Snapshots) -> bool {
-    KEYS.iter()
-        .all(|key| snapshots.get_var(&format!("{base}.{key}")).is_some())
-}
-
 impl ROBTable {
     pub fn new(base: &str, snapshots: &Snapshots) -> Option<Self> {
+        // check that dbg_this_is_rob exists so we know base is a rob
+        snapshots.get_var(&format!("{base}.dbg_this_is_rob"))?;
+
         let mut i = 0;
         let mut name = format!("{base}.entries[{i}]");
-
-        if !(matches_rob_entry(&name, snapshots)) {
-            return None;
-        }
 
         while snapshots.get_scope(&name).is_some() {
             i += 1;
