@@ -2,7 +2,7 @@
 use std::path::PathBuf;
 
 use color_eyre::eyre::Result;
-use directories::ProjectDirs;
+// use directories::ProjectDirs;
 use lazy_static::lazy_static;
 use tracing_error::ErrorLayer;
 use tracing_subscriber::{self, layer::SubscriberExt, util::SubscriberInitExt};
@@ -17,19 +17,20 @@ lazy_static! {
     pub static ref LOG_FILE: String = format!("{}.log", env!("CARGO_PKG_NAME"));
 }
 
-fn project_directory() -> Option<ProjectDirs> {
-    ProjectDirs::from("dev", "waning", env!("CARGO_PKG_NAME"))
-}
+// fn project_directory() -> Option<ProjectDirs> {
+//     ProjectDirs::from("dev", "waning", env!("CARGO_PKG_NAME"))
+// }
 
 pub fn get_data_dir() -> PathBuf {
-    let directory = if let Some(s) = DATA_FOLDER.clone() {
-        s
-    } else if let Some(proj_dirs) = project_directory() {
-        proj_dirs.data_local_dir().to_path_buf()
-    } else {
-        PathBuf::from(".").join(".data")
-    };
-    directory
+    // let directory = if let Some(s) = DATA_FOLDER.clone() {
+    //     s
+    // } else if let Some(proj_dirs) = project_directory() {
+    //     proj_dirs.data_local_dir().to_path_buf()
+    // } else {
+    //     PathBuf::from(".").join(".data")
+    // };
+    // directory
+    PathBuf::from(".").join("build")
 }
 
 pub fn initialize_logging() -> Result<()> {
