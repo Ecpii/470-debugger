@@ -37,9 +37,9 @@ fn popup_area(area: Rect, percent_x: u16, percent_y: u16) -> Rect {
 
 impl App {
     /// Construct a new instance of [`App`].
-    pub fn new() -> Self {
+    pub fn new(filename: &str) -> Self {
         trace_dbg!("start");
-        let snapshots = Snapshots::new().unwrap();
+        let snapshots = Snapshots::new(filename).unwrap();
         let structures = Structures::new(&snapshots);
         Self {
             running: false,
@@ -211,12 +211,6 @@ impl App {
     /// Set running to false to quit the application.
     fn quit(&mut self) {
         self.running = false;
-    }
-}
-
-impl Default for App {
-    fn default() -> Self {
-        Self::new()
     }
 }
 

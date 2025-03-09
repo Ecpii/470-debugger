@@ -117,8 +117,8 @@ pub struct Snapshots {
 }
 
 impl Snapshots {
-    pub fn new() -> io::Result<Self> {
-        let file = File::open("rs.vcd")?;
+    pub fn new(filename: &str) -> io::Result<Self> {
+        let file = File::open(filename)?;
         let mut parser = vcd::Parser::new(BufReader::new(file));
         let header = parser.parse_header()?;
 
@@ -239,6 +239,6 @@ mod tests {
 
     #[test]
     fn scratch() {
-        let _ = Snapshots::new();
+        let _ = Snapshots::new("rs.vcd");
     }
 }
