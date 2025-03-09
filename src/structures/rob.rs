@@ -4,7 +4,7 @@ use ratatui::{
     buffer::Buffer,
     layout::Rect,
     style::Stylize,
-    text::Line,
+    text::{Line, Text},
     widgets::{Block, Cell, Row, StatefulWidget, Table, Widget},
 };
 
@@ -63,9 +63,9 @@ impl StatefulWidget for ROBTable {
             let row_base = format!("{}.entries[{i}]", self.base);
 
             if i == head_index {
-                row_cells.push(Cell::new("h").bold())
+                row_cells.push(Cell::new(Text::from("h").centered()).bold())
             } else if i == tail_index {
-                row_cells.push(Cell::new("t").bold())
+                row_cells.push(Cell::new(Text::from("t").centered()).bold())
             } else {
                 row_cells.push(Cell::new(""))
             }

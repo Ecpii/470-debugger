@@ -44,10 +44,6 @@ impl RSTable {
             return String::from("xxx");
         }
 
-        // let VerilogValue::Vector(vec) = value else {
-        //     panic!("fu not a vector in vcd file!");
-        // };
-
         let n = value.as_usize();
         String::from(FU_TYPES.get(n).copied().unwrap_or("<invalid>"))
     }
