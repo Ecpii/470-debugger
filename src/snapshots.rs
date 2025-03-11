@@ -1,7 +1,6 @@
 use im::HashMap;
 use std::fmt::Display;
 use std::io::BufReader;
-use std::io::ErrorKind::InvalidInput;
 use std::{fs::File, io};
 use vcd::{self, Header, IdCode, Scope, ScopeItem, Value, Vector};
 
@@ -134,11 +133,13 @@ impl Snapshots {
 
         let base = get_header_base(&header);
 
-        let clock = header
-            .find_var(&[base.as_str(), "clock"])
-            .ok_or_else(|| io::Error::new(InvalidInput, "couldn't find clock wire!"))
-            .unwrap()
-            .code;
+        let clock_code;
+        if let Some(clock) = header.find_var(&[base.as_str(), "clock"]) {
+            clock_code = clock.code;
+        } else {
+            // give the clock an invalid code if it doesnt exist so always at clock cycle 0
+            clock_code = u64::MAX.into();
+        };
 
         let var_index = VarIndex::from_header(&header);
 
@@ -163,7 +164,7 @@ impl Snapshots {
                     }
                 }
                 ChangeScalar(id_code, value) => {
-                    if id_code == clock && matches!(value, Value::V1) {
+                    if id_code == clock_code && matches!(value, Value::V1) {
                         snapshot.clock_count += 1;
                     }
                     snapshot
