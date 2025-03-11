@@ -154,7 +154,7 @@ impl Snapshots {
         for command_result in parser {
             let command = command_result.unwrap();
             use vcd::Command::*;
-            // dbg!(&command);
+
             match command {
                 Timestamp(time) => {
                     // println!("\nTime: {time}")
@@ -176,9 +176,7 @@ impl Snapshots {
                         .variables
                         .insert(id_code, VerilogValue::Vector(value));
                 }
-                _ => {
-                    // dbg!(&x);
-                }
+                _ => {}
             }
         }
         let index = shots.len() - 1;

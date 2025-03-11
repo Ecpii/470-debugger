@@ -45,7 +45,6 @@ impl VarIndex {
                 }
             }
         }
-        dbg!(&vars);
         Self { vars, engine }
     }
 
