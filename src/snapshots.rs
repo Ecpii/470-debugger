@@ -210,6 +210,35 @@ impl Snapshots {
         false
     }
 
+    // note edge behavior favors partial completion
+    pub fn advance_n(&mut self, n: usize) -> bool {
+        for _ in 0..n {
+            let success = self.advance();
+            if !success {
+                return false;
+            }
+        }
+        true
+    }
+
+    pub fn retreat_n(&mut self, n: usize) -> bool {
+        for _ in 0..n {
+            let success = self.retreat();
+            if !success {
+                return false;
+            }
+        }
+        true
+    }
+
+    pub fn go_to_start(&mut self) {
+        self.index = 0;
+    }
+
+    pub fn go_to_end(&mut self) {
+        self.index = self.shots.len()-1;
+    }
+
     pub fn get_base(&self) -> String {
         get_header_base(&self.header)
     }

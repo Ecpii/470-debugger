@@ -24,6 +24,7 @@ pub struct App {
     search_list_state: ListState,
     search_matches: Vec<String>,
     structures: Structures,
+    cycle_jump: usize,
 }
 
 /// helper function to create a centered rect using up certain percentage of the available rect `r`
@@ -51,6 +52,7 @@ impl App {
             search_list_state: ListState::default(),
             search_matches: Vec::new(),
             structures,
+            cycle_jump: 1,
         }
     }
 
@@ -88,10 +90,16 @@ impl App {
         let instructions = Line::from(vec![
             " Watch variable ".into(),
             "</>".blue().bold(),
-            " Back one timestep ".into(),
+            format!(" Back {} timesteps ", self.cycle_jump).into(),
             "<Left>".blue().bold(),
-            " Forward one timestep ".into(),
+            format!(" Forward {} timestep ", self.cycle_jump).into(),
             "<Right>".blue().bold(),
+            " Change increment ".into(),
+            "<Up/Down>".blue().bold(),
+            " Go To Start ".into(),
+            "<s>".blue().bold(),
+            " Go To End ".into(),
+            "<e>".blue().bold(),
             " Quit ".into(),
             "<Q> ".blue().bold(),
         ])
@@ -197,17 +205,38 @@ impl App {
             // Add other key handlers here.
             (_, KeyCode::Left) => self.handle_left_key(),
             (_, KeyCode::Right) => self.handle_right_key(),
+            (_, KeyCode::Up) => self.handle_up_key(),
+            (_, KeyCode::Down) => self.handle_down_key(),
+            (_, KeyCode::Char('s')) => self.snapshots.go_to_start(),
+            (_, KeyCode::Char('e')) => self.snapshots.go_to_end(),
+
             (_, KeyCode::Char('/')) => self.show_popup = !self.show_popup,
+
+            // vim bindings
+            (_, KeyCode::Char('h')) => self.handle_left_key(),
+            (_, KeyCode::Char('k')) => self.handle_up_key(),
+            (_, KeyCode::Char('j')) => self.handle_down_key(),
+            (_, KeyCode::Char('l')) => self.handle_right_key(),
             _ => {}
         }
     }
 
     fn handle_left_key(&mut self) {
-        self.snapshots.retreat();
+        self.snapshots.retreat_n(self.cycle_jump);
     }
 
     fn handle_right_key(&mut self) {
-        self.snapshots.advance();
+        self.snapshots.advance_n(self.cycle_jump);
+    }
+
+    fn handle_up_key(&mut self) {
+        self.cycle_jump *= 10;
+    }
+
+    fn handle_down_key(&mut self) {
+        if self.cycle_jump >= 10 {
+            self.cycle_jump /= 10;
+        }
     }
 
     /// Set running to false to quit the application.
