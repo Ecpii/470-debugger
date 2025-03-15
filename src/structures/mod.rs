@@ -27,6 +27,16 @@ impl Structures {
             let ScopeItem::Scope(scope_outer) = scope_item_outer else {
                 continue;
             };
+            let new_base_outer = format!("{base}.{}", scope_outer.identifier);
+
+            // try to fit each module into rs or rob if they match the shape
+            if rs.is_none() {
+                rs = RSTable::new(&new_base_outer, snapshots);
+            }
+            if rob.is_none() {
+                rob = ROBTable::new(&new_base_outer, snapshots);
+            }
+
             for scope_item in scope_outer.items.iter() {
                 let ScopeItem::Scope(scope) = scope_item else {
                     continue;
