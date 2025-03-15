@@ -48,15 +48,17 @@ impl App {
         trace_dbg!("start");
         let snapshots = Snapshots::new(filename).unwrap();
         let structures = Structures::new(&snapshots);
+        let search_query = snapshots.get_base();
+        let search_matches = snapshots.autocomplete_var(&search_query);
         Self {
             running: false,
             snapshots,
             watch_list: Vec::new(),
             show_popup: None,
-            search_input: Input::default(),
-            search_query: String::new(),
+            search_input: Input::new(search_query.clone()),
+            search_query,
             search_list_state: ListState::default(),
-            search_matches: Vec::new(),
+            search_matches,
             structures,
             cycle_jump: 1,
         }
@@ -206,7 +208,7 @@ impl App {
                     if !value.is_empty() {
                         self.watch_list.push(value.to_owned());
                     }
-                    self.search_input.reset();
+                    self.search_input = Input::new(self.snapshots.get_base());
                     self.show_popup = None;
                 }
                 (_, KeyCode::Up) => {
