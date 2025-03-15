@@ -58,6 +58,7 @@ impl App {
 
     /// Run the application's main loop.
     pub fn run(mut self, mut terminal: DefaultTerminal) -> Result<()> {
+        let _ = terminal.clear();
         self.running = true;
         while self.running {
             terminal.draw(|frame| self.draw(frame))?;

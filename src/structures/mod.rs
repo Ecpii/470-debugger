@@ -1,3 +1,4 @@
+use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::widgets::StatefulWidget;
 use rob::ROBTable;
 use rs::RSTable;
@@ -22,22 +23,27 @@ impl Structures {
         let base = snapshots.get_base();
         let testbench = snapshots.header.find_scope(&[base.clone()]).unwrap();
 
-        for scope_item in testbench.items.iter() {
-            let ScopeItem::Scope(scope) = scope_item else {
+        for scope_item_outer in testbench.items.iter() {
+            let ScopeItem::Scope(scope_outer) = scope_item_outer else {
                 continue;
             };
-            if !matches!(scope.scope_type, ScopeType::Module) {
-                continue;
-            }
+            for scope_item in scope_outer.items.iter() {
+                let ScopeItem::Scope(scope) = scope_item else {
+                    continue;
+                };
+                if !matches!(scope.scope_type, ScopeType::Module) {
+                    continue;
+                }
 
-            let new_base = format!("{base}.{}", scope.identifier);
+                let new_base = format!("{base}.{}.{}", scope_outer.identifier, scope.identifier);
 
-            // try to fit each module into rs or rob if they match the shape
-            if rs.is_none() {
-                rs = RSTable::new(&new_base, snapshots);
-            }
-            if rob.is_none() {
-                rob = ROBTable::new(&new_base, snapshots);
+                // try to fit each module into rs or rob if they match the shape
+                if rs.is_none() {
+                    rs = RSTable::new(&new_base, snapshots);
+                }
+                if rob.is_none() {
+                    rob = ROBTable::new(&new_base, snapshots);
+                }
             }
         }
 
@@ -45,6 +51,15 @@ impl Structures {
 
         Self { rs, rob }
     }
+}
+
+// ai generated(gemini)
+fn split_rectangle_horizontal(area: Rect) -> Vec<Rect> {
+    Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([Constraint::Percentage(50), Constraint::Percentage(50)].as_ref())
+        .split(area)
+        .to_vec()
 }
 
 impl StatefulWidget for Structures {
@@ -57,7 +72,13 @@ impl StatefulWidget for Structures {
         state: &mut Self::State,
     ) {
         if let Some(rs) = self.rs {
-            rs.render(area, buf, state);
+            if let Some(rob) = self.rob {
+                let chunks = split_rectangle_horizontal(area);
+                rs.render(chunks[0], buf, state);
+                rob.render(chunks[1], buf, state);
+            } else {
+                rs.render(area, buf, state);
+            }
         } else if let Some(rob) = self.rob {
             rob.render(area, buf, state);
         }
