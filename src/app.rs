@@ -13,12 +13,18 @@ use tui_input::{backend::crossterm::EventHandler, Input};
 
 use crate::{snapshots::Snapshots, structures::Structures, trace_dbg};
 
+#[derive(Clone, Copy, Debug)]
+enum PopupType {
+    Search,
+    Help,
+}
+
 pub struct App {
     /// Is the application running?
     running: bool,
     snapshots: Snapshots,
     watch_list: Vec<String>,
-    show_popup: bool,
+    show_popup: Option<PopupType>,
     search_input: Input,
     search_query: String,
     search_list_state: ListState,
@@ -46,7 +52,7 @@ impl App {
             running: false,
             snapshots,
             watch_list: Vec::new(),
-            show_popup: false,
+            show_popup: None,
             search_input: Input::default(),
             search_query: String::new(),
             search_list_state: ListState::default(),
@@ -89,18 +95,16 @@ impl App {
         }
 
         let instructions = Line::from(vec![
+            " Help ".into(),
+            "<?>".blue().bold(),
             " Watch variable ".into(),
             "</>".blue().bold(),
             format!(" Back {} timesteps ", self.cycle_jump).into(),
             "<Left>".blue().bold(),
-            format!(" Forward {} timestep ", self.cycle_jump).into(),
+            format!(" Forward {} timesteps ", self.cycle_jump).into(),
             "<Right>".blue().bold(),
             " Change increment ".into(),
             "<Up/Down>".blue().bold(),
-            " Go To Start ".into(),
-            "<s>".blue().bold(),
-            " Go To End ".into(),
-            "<e>".blue().bold(),
             " Quit ".into(),
             "<Q> ".blue().bold(),
         ])
@@ -118,25 +122,60 @@ impl App {
         frame.render_widget(Paragraph::new(text).centered(), top_half);
         frame.render_stateful_widget(self.structures.clone(), bottom_half, &mut self.snapshots);
 
-        if self.show_popup {
-            let block = Block::bordered().title("Watch Variable...");
-            let search = Line::from(self.search_input.value());
-            let list = List::new(self.search_matches.clone())
-                .highlight_style(Style::new().bg(Color::Blue));
-
+        if let Some(popup_type) = self.show_popup {
             let area = popup_area(frame.area(), 60, 20);
-            let vertical = Layout::vertical([Constraint::Length(1), Constraint::Fill(1)]);
-            let inner_area = block.inner(area);
-            let [search_area, match_area] = vertical.areas(inner_area);
 
             frame.render_widget(Clear, area); //this clears out the background
-            frame.render_widget(block, area);
-            frame.render_widget(search, search_area);
-            frame.render_stateful_widget(list, match_area, &mut self.search_list_state);
-            frame.set_cursor_position((
-                area.x + (self.search_input.visual_cursor()) as u16 + 1,
-                area.y + 1,
-            ));
+
+            match popup_type {
+                PopupType::Search => {
+                    let block = Block::bordered().title("Watch Variable...");
+                    let search = Line::from(self.search_input.value());
+                    let list = List::new(self.search_matches.clone())
+                        .highlight_style(Style::new().bg(Color::Blue));
+
+                    let vertical = Layout::vertical([Constraint::Length(1), Constraint::Fill(1)]);
+                    let inner_area = block.inner(area);
+                    let [search_area, match_area] = vertical.areas(inner_area);
+
+                    frame.render_widget(block, area);
+                    frame.render_widget(search, search_area);
+                    frame.render_stateful_widget(list, match_area, &mut self.search_list_state);
+                    frame.set_cursor_position((
+                        area.x + (self.search_input.visual_cursor()) as u16 + 1,
+                        area.y + 1,
+                    ));
+                }
+                PopupType::Help => {
+                    let instructions = Paragraph::new(vec![
+                        Line::from(vec!["<?>".blue().bold(), " Help\n".into()]),
+                        Line::from(vec![
+                            "</>".blue().bold(),
+                            " Add variable to watch list\n".into(),
+                        ]),
+                        Line::from(vec![
+                            "<Left>".blue().bold(),
+                            format!(" Back {} timesteps / ", self.cycle_jump).into(),
+                            "<Right>".blue().bold(),
+                            format!(" Forward {} timesteps\n", self.cycle_jump).into(),
+                        ]),
+                        Line::from(vec![
+                            "<Up/Down>".blue().bold(),
+                            " Change increment\n".into(),
+                        ]),
+                        Line::from(vec![
+                            "<s>".blue().bold(),
+                            " Go To Start / ".into(),
+                            "<e>".blue().bold(),
+                            " Go To End\n".into(),
+                        ]),
+                        Line::from(vec!["<q>".blue().bold(), " Quit ".into()]),
+                    ])
+                    .block(Block::bordered().title("Keybindings"));
+
+                    frame.render_widget(instructions, area);
+                }
+            }
         }
     }
 
@@ -157,10 +196,10 @@ impl App {
 
     /// Handles the key events and updates the state of [`App`].
     fn on_key_event(&mut self, key: KeyEvent) {
-        if self.show_popup {
+        if matches!(self.show_popup, Some(PopupType::Search)) {
             match (key.modifiers, key.code) {
                 (_, KeyCode::Esc | KeyCode::Char('/')) => {
-                    self.show_popup = false;
+                    self.show_popup = None;
                 }
                 (_, KeyCode::Enter) => {
                     let value = self.search_input.value().trim();
@@ -168,7 +207,7 @@ impl App {
                         self.watch_list.push(value.to_owned());
                     }
                     self.search_input.reset();
-                    self.show_popup = false;
+                    self.show_popup = None;
                 }
                 (_, KeyCode::Up) => {
                     if let Some(selected) = self.search_list_state.selected() {
@@ -188,8 +227,6 @@ impl App {
                     let index = min(selected, self.search_matches.len() - 1);
                     self.search_input = Input::new(self.search_matches[index].clone());
                 }
-                // (_, KeyCode::Char(_)) => {
-                // }
                 _ => {
                     self.search_input.handle_event(&Event::Key(key));
                     self.search_query = self.search_input.value().to_owned();
@@ -211,7 +248,14 @@ impl App {
             (_, KeyCode::Char('s')) => self.snapshots.go_to_start(),
             (_, KeyCode::Char('e')) => self.snapshots.go_to_end(),
 
-            (_, KeyCode::Char('/')) => self.show_popup = !self.show_popup,
+            (_, KeyCode::Char('?')) => {
+                if self.show_popup.is_some() {
+                    self.show_popup = None;
+                } else {
+                    self.show_popup = Some(PopupType::Help)
+                }
+            }
+            (_, KeyCode::Char('/')) => self.show_popup = Some(PopupType::Search),
 
             // vim bindings
             (_, KeyCode::Char('h')) => self.handle_left_key(),
