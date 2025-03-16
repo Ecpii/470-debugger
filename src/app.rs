@@ -289,7 +289,12 @@ impl App {
     }
 
     fn handle_search_enter(&mut self) {
-        let value = self.search_input.value().trim();
+        let value = if let Some(index) = self.search_list_state.selected() {
+            &self.search_matches[index]
+        } else {
+            self.search_input.value().trim()
+        };
+
         if !value.is_empty() {
             if self.snapshots.get_var(value).is_some() {
                 self.watch_list.push(value.to_owned());
