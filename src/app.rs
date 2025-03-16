@@ -111,20 +111,33 @@ impl App {
     fn draw(&mut self, frame: &mut Frame) {
         let title = Line::from("o3o Debugger").bold().blue().centered();
 
-        let instructions = Line::from(vec![
-            " Help ".into(),
-            "<?>".blue().bold(),
-            " Watch variable ".into(),
-            "</>".blue().bold(),
-            format!(" Back {} timesteps ", self.cycle_jump).into(),
-            "<Left>".blue().bold(),
-            format!(" Forward {} timesteps ", self.cycle_jump).into(),
-            "<Right>".blue().bold(),
-            " Change increment ".into(),
-            "<+/->".blue().bold(),
-            " Quit ".into(),
-            "<Q> ".blue().bold(),
-        ])
+        let instructions = if self.watch_list_state.selected().is_some() {
+            Line::from(vec![
+                " Help ".into(),
+                "<?>".blue().bold(),
+                " Watch variable ".into(),
+                "</>".blue().bold(),
+                " Delete ".into(),
+                "<d>".blue().bold(),
+                " Quit ".into(),
+                "<Q> ".blue().bold(),
+            ])
+        } else {
+            Line::from(vec![
+                " Help ".into(),
+                "<?>".blue().bold(),
+                " Watch variable ".into(),
+                "</>".blue().bold(),
+                format!(" Back {} timesteps ", self.cycle_jump).into(),
+                "<Left>".blue().bold(),
+                format!(" Forward {} timesteps ", self.cycle_jump).into(),
+                "<Right>".blue().bold(),
+                " Change increment ".into(),
+                "<+/->".blue().bold(),
+                " Quit ".into(),
+                "<Q> ".blue().bold(),
+            ])
+        }
         .centered();
 
         let block = Block::bordered().title(title).title_bottom(instructions);
@@ -255,6 +268,7 @@ impl App {
             (_, KeyCode::Char('-') | KeyCode::Char('_')) => self.decrease_jump(),
             (_, KeyCode::Char('s')) => self.snapshots.go_to_start(),
             (_, KeyCode::Char('e')) => self.snapshots.go_to_end(),
+            (_, KeyCode::Char('d')) => self.delete_selected_watch(),
 
             (_, KeyCode::Char('?')) => {
                 if self.show_popup.is_some() {
@@ -292,6 +306,13 @@ impl App {
         }
         self.search_input = Input::new(self.snapshots.get_base() + ".");
         self.show_popup = None;
+    }
+
+    fn delete_selected_watch(&mut self) {
+        let Some(index) = self.watch_list_state.selected() else {
+            return;
+        };
+        self.watch_list.remove(index);
     }
 
     fn handle_left_key(&mut self) {
