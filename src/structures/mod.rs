@@ -4,7 +4,7 @@ use rob::ROBTable;
 use rs::RSTable;
 use vcd::{ScopeItem, ScopeType};
 
-use crate::{snapshots::Snapshots, trace_dbg};
+use crate::snapshots::Snapshots;
 
 mod rob;
 mod rs;
@@ -57,7 +57,7 @@ impl Structures {
             }
         }
 
-        trace_dbg!(&rs);
+        // trace_dbg!(&rs);
 
         Self { rs, rob }
     }

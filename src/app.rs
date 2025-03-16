@@ -5,7 +5,7 @@ use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifier
 use ratatui::{
     layout::{Constraint, Flex, Layout, Rect},
     style::{Color, Style, Stylize},
-    text::Line,
+    text::{Line, Text},
     widgets::{Block, Clear, List, ListState, Paragraph},
     DefaultTerminal, Frame,
 };
@@ -31,6 +31,7 @@ pub struct App {
     search_matches: Vec<String>,
     structures: Structures,
     cycle_jump: usize,
+    watch_list_state: ListState,
 }
 
 /// helper function to create a centered rect using up certain percentage of the available rect `r`
@@ -61,6 +62,7 @@ impl App {
             search_matches,
             structures,
             cycle_jump: 1,
+            watch_list_state: ListState::default(),
         }
     }
 
@@ -75,6 +77,31 @@ impl App {
         Ok(())
     }
 
+    fn render_watch_list(&mut self, frame: &mut Frame, area: Rect) {
+        let snapshot = self.snapshots.get().unwrap();
+        let [first_line, rest] =
+            Layout::vertical([Constraint::Length(1), Constraint::Fill(1)]).areas(area);
+        let time_marker = format!(
+            "Current Clock Cycle: {}  - Current Time: {}\n",
+            snapshot.clock_count, snapshot.time
+        );
+
+        let mut lines = Vec::new();
+
+        for name in self.watch_list.iter() {
+            if let Some(value) = self.snapshots.get_var(name) {
+                lines.push(Text::from(format!("{}: {}\n", name, value)).centered());
+            } else {
+                lines.push(Text::from(format!("{name} not found!\n")).dim().centered());
+            }
+        }
+
+        let list = List::new(lines).highlight_style(Style::new().on_blue());
+
+        frame.render_widget(Line::from(time_marker).centered(), first_line);
+        frame.render_stateful_widget(list, rest, &mut self.watch_list_state);
+    }
+
     /// Renders the user interface.
     ///
     /// This is where you add new widgets. See the following resources for more information:
@@ -82,19 +109,6 @@ impl App {
     /// - <https://github.com/ratatui/ratatui/tree/master/examples>
     fn draw(&mut self, frame: &mut Frame) {
         let title = Line::from("o3o Debugger").bold().blue().centered();
-        let snapshot = self.snapshots.get().unwrap();
-        let mut text = format!(
-            "Current Clock Cycle: {}  - Current Time: {}\n",
-            snapshot.clock_count, snapshot.time
-        );
-
-        for name in self.watch_list.iter() {
-            if let Some(value) = self.snapshots.get_var(name) {
-                text.push_str(&format!("{}: {}\n", name, value));
-            } else {
-                text.push_str(&format!("{name} not found!\n"));
-            }
-        }
 
         let instructions = Line::from(vec![
             " Help ".into(),
@@ -106,7 +120,7 @@ impl App {
             format!(" Forward {} timesteps ", self.cycle_jump).into(),
             "<Right>".blue().bold(),
             " Change increment ".into(),
-            "<Up/Down>".blue().bold(),
+            "<+/->".blue().bold(),
             " Quit ".into(),
             "<Q> ".blue().bold(),
         ])
@@ -118,10 +132,10 @@ impl App {
             Constraint::Fill(1),
         ])
         .areas(block.inner(frame.area()));
-
         frame.render_widget(block, frame.area());
 
-        frame.render_widget(Paragraph::new(text).centered(), top_half);
+        // render both halves (watch list and structures)
+        self.render_watch_list(frame, top_half);
         frame.render_stateful_widget(self.structures.clone(), bottom_half, &mut self.snapshots);
 
         if let Some(popup_type) = self.show_popup {
@@ -162,8 +176,12 @@ impl App {
                             format!(" Forward {} timesteps\n", self.cycle_jump).into(),
                         ]),
                         Line::from(vec![
-                            "<Up/Down>".blue().bold(),
+                            "<+/->".blue().bold(),
                             " Change increment\n".into(),
+                        ]),
+                        Line::from(vec![
+                            "<Up/Down>".blue().bold(),
+                            " Select Variable\n".into(),
                         ]),
                         Line::from(vec![
                             "<s>".blue().bold(),
@@ -243,10 +261,8 @@ impl App {
             (_, KeyCode::Esc | KeyCode::Char('q'))
             | (KeyModifiers::CONTROL, KeyCode::Char('c') | KeyCode::Char('C')) => self.quit(),
             // Add other key handlers here.
-            (_, KeyCode::Left) => self.handle_left_key(),
-            (_, KeyCode::Right) => self.handle_right_key(),
-            (_, KeyCode::Up) => self.handle_up_key(),
-            (_, KeyCode::Down) => self.handle_down_key(),
+            (_, KeyCode::Char('=') | KeyCode::Char('+')) => self.increase_jump(),
+            (_, KeyCode::Char('-') | KeyCode::Char('_')) => self.decrease_jump(),
             (_, KeyCode::Char('s')) => self.snapshots.go_to_start(),
             (_, KeyCode::Char('e')) => self.snapshots.go_to_end(),
 
@@ -260,10 +276,10 @@ impl App {
             (_, KeyCode::Char('/')) => self.show_popup = Some(PopupType::Search),
 
             // vim bindings
-            (_, KeyCode::Char('h')) => self.handle_left_key(),
-            (_, KeyCode::Char('k')) => self.handle_up_key(),
-            (_, KeyCode::Char('j')) => self.handle_down_key(),
-            (_, KeyCode::Char('l')) => self.handle_right_key(),
+            (_, KeyCode::Left | KeyCode::Char('h')) => self.handle_left_key(),
+            (_, KeyCode::Down | KeyCode::Char('j')) => self.handle_down_key(),
+            (_, KeyCode::Up | KeyCode::Char('k')) => self.handle_up_key(),
+            (_, KeyCode::Right | KeyCode::Char('l')) => self.handle_right_key(),
             _ => {}
         }
     }
@@ -277,10 +293,22 @@ impl App {
     }
 
     fn handle_up_key(&mut self) {
-        self.cycle_jump *= 10;
+        if let Some(0) = self.watch_list_state.selected() {
+            self.watch_list_state.select(None)
+        } else if self.watch_list_state.selected().is_some() {
+            self.watch_list_state.select_previous();
+        }
     }
 
     fn handle_down_key(&mut self) {
+        self.watch_list_state.select_next();
+    }
+
+    fn increase_jump(&mut self) {
+        self.cycle_jump *= 10;
+    }
+
+    fn decrease_jump(&mut self) {
         if self.cycle_jump >= 10 {
             self.cycle_jump /= 10;
         }
