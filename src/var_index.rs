@@ -33,12 +33,13 @@ impl VarIndex {
                 match scope_item {
                     ScopeItem::Scope(scope) => {
                         let name = prefix.clone() + "." + &scope.identifier;
+                        engine.insert(name.clone(), &name);
+                        trace_dbg!(&name);
                         to_search.push((name, scope.clone()));
                     }
                     ScopeItem::Var(var) => {
                         let name = prefix.clone() + "." + &var.reference;
                         engine.insert(name.clone(), &name);
-                        trace_dbg!(&name);
                         vars.insert(name, var.code);
                     }
                     _ => {}

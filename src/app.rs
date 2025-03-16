@@ -10,6 +10,7 @@ use ratatui::{
     DefaultTerminal, Frame,
 };
 use tui_input::{backend::crossterm::EventHandler, Input};
+use vcd::ScopeItem;
 
 use crate::{snapshots::Snapshots, structures::Structures, trace_dbg};
 
@@ -49,7 +50,7 @@ impl App {
         trace_dbg!("start");
         let snapshots = Snapshots::new(filename).unwrap();
         let structures = Structures::new(&snapshots);
-        let search_query = snapshots.get_base();
+        let search_query = snapshots.get_base() + ".";
         let search_matches = snapshots.autocomplete_var(&search_query);
         Self {
             running: false,
@@ -175,14 +176,8 @@ impl App {
                             "<Right>".blue().bold(),
                             format!(" Forward {} timesteps\n", self.cycle_jump).into(),
                         ]),
-                        Line::from(vec![
-                            "<+/->".blue().bold(),
-                            " Change increment\n".into(),
-                        ]),
-                        Line::from(vec![
-                            "<Up/Down>".blue().bold(),
-                            " Select Variable\n".into(),
-                        ]),
+                        Line::from(vec!["<+/->".blue().bold(), " Change increment\n".into()]),
+                        Line::from(vec!["<Up/Down>".blue().bold(), " Select Variable\n".into()]),
                         Line::from(vec![
                             "<s>".blue().bold(),
                             " Go To Start / ".into(),
@@ -222,12 +217,7 @@ impl App {
                     self.show_popup = None;
                 }
                 (_, KeyCode::Enter) => {
-                    let value = self.search_input.value().trim();
-                    if !value.is_empty() {
-                        self.watch_list.push(value.to_owned());
-                    }
-                    self.search_input = Input::new(self.snapshots.get_base());
-                    self.show_popup = None;
+                    self.handle_search_enter();
                 }
                 (_, KeyCode::Up) => {
                     if let Some(selected) = self.search_list_state.selected() {
@@ -282,6 +272,26 @@ impl App {
             (_, KeyCode::Right | KeyCode::Char('l')) => self.handle_right_key(),
             _ => {}
         }
+    }
+
+    fn handle_search_enter(&mut self) {
+        let value = self.search_input.value().trim();
+        if !value.is_empty() {
+            if self.snapshots.get_var(value).is_some() {
+                self.watch_list.push(value.to_owned());
+            } else if let Some(scope) = self.snapshots.get_scope(value) {
+                for s in scope.items.iter() {
+                    if let ScopeItem::Var(v) = s {
+                        let new_name = value.to_owned() + "." + &v.reference;
+                        self.watch_list.push(new_name);
+                    }
+                }
+            } else {
+                // todo: provide visual feedback that search was not good
+            }
+        }
+        self.search_input = Input::new(self.snapshots.get_base() + ".");
+        self.show_popup = None;
     }
 
     fn handle_left_key(&mut self) {
