@@ -232,7 +232,7 @@ impl App {
                 (_, KeyCode::Enter) => {
                     self.handle_search_enter();
                 }
-                (_, KeyCode::Up) => {
+                (_, KeyCode::Up | KeyCode::BackTab) => {
                     if let Some(selected) = self.search_list_state.selected() {
                         if selected == 0 {
                             self.search_list_state.select(None);
@@ -244,7 +244,7 @@ impl App {
                         }
                     }
                 }
-                (_, KeyCode::Down) => {
+                (_, KeyCode::Down | KeyCode::Tab) => {
                     self.search_list_state.select_next();
                     let selected = self.search_list_state.selected().unwrap();
                     let index = min(selected, self.search_matches.len() - 1);
