@@ -263,7 +263,7 @@ impl App {
         }
 
         match (key.modifiers, key.code) {
-            (_, KeyCode::Esc | KeyCode::Char('q'))
+            (_, KeyCode::Char('q'))
             | (KeyModifiers::CONTROL, KeyCode::Char('c') | KeyCode::Char('C')) => self.quit(),
             // Add other key handlers here.
             (_, KeyCode::Char('=') | KeyCode::Char('+')) => self.increase_jump(),
