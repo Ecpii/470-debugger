@@ -251,10 +251,12 @@ impl App {
                     self.search_input = Input::new(self.search_matches[index].clone());
                 }
                 _ => {
-                    self.search_input.handle_event(&Event::Key(key));
-                    self.search_query = self.search_input.value().to_owned();
-                    self.search_matches =
-                        self.snapshots.autocomplete_var(self.search_input.value());
+                    if self.search_input.handle_event(&Event::Key(key)).is_some() {
+                        self.search_query = self.search_input.value().to_owned();
+                        self.search_matches =
+                            self.snapshots.autocomplete_var(self.search_input.value());
+                        self.search_list_state.select(None);
+                    }
                 }
             }
             return;
@@ -307,6 +309,7 @@ impl App {
                 }
             } else {
                 // todo: provide visual feedback that search was not good
+                return;
             }
         }
         self.search_input = Input::new(self.snapshots.get_base() + ".");
