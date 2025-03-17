@@ -1,3 +1,5 @@
 CAEN
 Ratatui
 vcd
+hardcoded
+rearrangable

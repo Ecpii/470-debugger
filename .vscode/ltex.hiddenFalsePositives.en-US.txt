@@ -1,2 +1,4 @@
 {"rule":"UPPERCASE_SENTENCE_START","sentence":"^\\Qwill try to find \\E(?:Dummy|Ina|Jimmy-)[0-9]+\\Q or \\E(?:Dummy|Ina|Jimmy-)[0-9]+\\Q.\\E$"}
 {"rule":"UPPERCASE_SENTENCE_START","sentence":"^\\Qo3o debugger\\E$"}
+{"rule":"ENGLISH_WORD_REPEAT_RULE","sentence":"^\\Qfigure out how to layout multiple tables when we run out of area (generically, right now rs and rob are hardcoded to be side by side)\nfigure out how the debugger will detect what modules are present (using \\E(?:Dummy|Ina|Jimmy-)[0-9]+\\Q for now)\nmake map table table\\E$"}
+{"rule":"ENGLISH_WORD_REPEAT_RULE","sentence":"^\\Qfigure out how to layout multiple tables when we run out of area (generically, right now rs and rob are hardcoded to be side by side)\nfigure out how the debugger will detect what modules are present (using \\E(?:Dummy|Ina|Jimmy-)[0-9]+\\Q for now)\nmake map table table\nmake highlighted entry\\E$"}
