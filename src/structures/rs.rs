@@ -11,7 +11,16 @@ use crate::{
     trace_dbg,
 };
 
-const KEYS: [&str; 6] = ["dest_tag", "rs1_tag", "rs2_tag", "bmask", "fu", "rob_num"];
+// true if we can use the raw name as the key to index
+const HEADERS: [(&str, bool); 7] = [
+    ("dest_tag", true),
+    ("rs1_tag", true),
+    ("rs2_tag", true),
+    ("bmask", true),
+    ("fu", true),
+    ("rob_num", true),
+    ("op", false),
+];
 const FU_TYPES: [&str; 6] = ["NOP", "IALU", "LD", "STR", "MULT", "BRANCH"];
 
 #[derive(Clone, Debug)]
@@ -58,8 +67,8 @@ impl StatefulWidget for RSTable {
         buf: &mut ratatui::prelude::Buffer,
         snapshots: &mut Self::State,
     ) {
-        let header = Row::new(KEYS).bold().on_blue();
-        let mut widths: Vec<u16> = KEYS.iter().map(|x| x.len() as u16).collect();
+        let mut widths: Vec<u16> = HEADERS.iter().map(|(x, _)| x.len() as u16).collect();
+        let header = Row::new(HEADERS.map(|(x, _)| x)).bold().on_blue();
 
         let mut rows = Vec::new();
 
@@ -68,44 +77,51 @@ impl StatefulWidget for RSTable {
             let mut is_valid = true;
             let row_base = format!("{}.entries[{i}]", self.base);
 
-            for (j, key) in KEYS.iter().enumerate() {
-                let full_key = format!("{row_base}.{key}");
-                trace_dbg!(&full_key);
-                let value = snapshots.get_var(&full_key).unwrap();
+            for (j, (name, is_key)) in HEADERS.iter().enumerate() {
+                let string = if *is_key {
+                    let full_key = format!("{row_base}.{name}");
+                    trace_dbg!(&full_key);
+                    let value = snapshots.get_var(&full_key).unwrap();
 
-                // string that gets displayed in the cell section
-                let value_str = match *key {
-                    "rs1_tag" => {
-                        let plus_key = format!("{row_base}.rs1_ready");
-                        trace_dbg!(&plus_key);
-                        let plus = snapshots
-                            .get_var(&plus_key)
-                            .is_some_and(VerilogValue::is_high);
+                    if *name == "fu" && (value.is_low() || value.is_unknown()) {
+                        is_valid = false
+                    }
 
-                        value.as_decimal() + if plus { "+" } else { "" }
-                    }
-                    "rs2_tag" => {
-                        let plus_key = format!("{row_base}.rs2_ready");
-                        let plus = snapshots
-                            .get_var(&plus_key)
-                            .is_some_and(VerilogValue::is_high);
+                    // string that gets displayed in the cell section
+                    match *name {
+                        "rs1_tag" => {
+                            let plus_key = format!("{row_base}.rs1_ready");
+                            trace_dbg!(&plus_key);
+                            let plus = snapshots
+                                .get_var(&plus_key)
+                                .is_some_and(VerilogValue::is_high);
 
-                        value.as_decimal() + if plus { "+" } else { "" }
+                            value.as_decimal() + if plus { "+" } else { "" }
+                        }
+                        "rs2_tag" => {
+                            let plus_key = format!("{row_base}.rs2_ready");
+                            let plus = snapshots
+                                .get_var(&plus_key)
+                                .is_some_and(VerilogValue::is_high);
+
+                            value.as_decimal() + if plus { "+" } else { "" }
+                        }
+                        "dest_tag" | "rob_num" => value.as_decimal(),
+                        "fu" => self.format_fu(value),
+                        _ => {
+                            format!("{}", value)
+                        }
                     }
-                    "dest_tag" | "rob_num" => value.as_decimal(),
-                    "fu" => self.format_fu(value),
-                    _ => {
-                        format!("{}", value)
-                    }
+                } else if *name == "op" {
+                    let opinfo_base = format!("{row_base}.op");
+                    snapshots.render_opinfo(&opinfo_base)
+                } else {
+                    unreachable!()
                 };
-                let width = value_str.len();
 
-                row_cells.push(Cell::new(value_str));
+                let width = string.len();
+                row_cells.push(Cell::new(string));
                 widths[j] = max(widths[j], width as u16);
-
-                if *key == "fu" && (value.is_low() || value.is_unknown()) {
-                    is_valid = false
-                }
             }
 
             let mut row = Row::new(row_cells);

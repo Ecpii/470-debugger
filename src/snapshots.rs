@@ -278,10 +278,6 @@ impl Snapshots {
 
         format!("{pc}: {inst}")
     }
-
-    pub fn differences(&self) -> Differences {
-        todo!()
-    }
 }
 
 #[cfg(test)]
