@@ -12,7 +12,7 @@ use crate::{
 };
 
 const KEYS: [&str; 6] = ["dest_tag", "rs1_tag", "rs2_tag", "bmask", "fu", "rob_num"];
-const FU_TYPES: [&str; 5] = ["NOP", "IALU", "LD", "STR", "MULT"];
+const FU_TYPES: [&str; 6] = ["NOP", "IALU", "LD", "STR", "MULT", "BRANCH"];
 
 #[derive(Clone, Debug)]
 pub struct RSTable {
