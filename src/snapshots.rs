@@ -1,4 +1,5 @@
 use im::HashMap;
+use raki::{Decode, Isa};
 use std::fmt::Display;
 use std::io::BufReader;
 use std::{fs::File, io};
@@ -235,7 +236,7 @@ impl Snapshots {
     }
 
     pub fn go_to_end(&mut self) {
-        self.index = self.shots.len()-1;
+        self.index = self.shots.len() - 1;
     }
 
     pub fn get_base(&self) -> String {
@@ -258,6 +259,22 @@ impl Snapshots {
 
     pub fn autocomplete_var(&self, var_name: &str) -> Vec<String> {
         self.var_index.engine.search(var_name)
+    }
+
+    pub fn render_opinfo(&self, base: &str) -> String {
+        let pc = self.get_var(&format!("{base}.PC")).unwrap().as_decimal();
+
+        // return format!("{}", self.get_var(&format!("{base}.inst.inst")).unwrap());
+
+        let inst_bits = self
+            .get_var(&format!("{base}.inst.inst"))
+            .unwrap()
+            .as_usize();
+        let Ok(inst) = (inst_bits as u32).decode(Isa::Rv32) else {
+            return format!("{pc}: <invalid>");
+        };
+
+        format!("{pc}: {inst}")
     }
 
     pub fn differences(&self) -> Differences {

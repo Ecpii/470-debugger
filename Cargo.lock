@@ -208,6 +208,7 @@ dependencies = [
  "directories",
  "im",
  "lazy_static",
+ "raki",
  "ratatui",
  "simsearch",
  "tracing",
@@ -560,6 +561,12 @@ checksum = "0e4dccaaaf89514f546c693ddc140f729f958c247918a13380cccc6078391acc"
 dependencies = [
  "proc-macro2",
 ]
+
+[[package]]
+name = "raki"
+version = "1.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7bf85656829cd7175334e80b3032e346b78c4552c1ec2626638cba92d560d4e3"
 
 [[package]]
 name = "rand_core"
