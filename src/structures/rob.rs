@@ -11,7 +11,8 @@ use ratatui::{
 use crate::{snapshots::Snapshots, trace_dbg};
 
 // true if we can use the raw name as the key to index
-const HEADERS: [(&str, bool); 6] = [
+const HEADERS: [(&str, bool); 7] = [
+    ("#", false),
     ("h/t", false),
     ("t", true),
     ("t_old", true),
@@ -91,6 +92,8 @@ impl StatefulWidget for ROBTable {
                             format!("{}", value)
                         }
                     }
+                } else if *name == "#" {
+                    i.to_string()
                 } else if *name == "op" {
                     let opinfo_base = format!("{row_base}.info");
                     snapshots.render_opinfo(&opinfo_base)

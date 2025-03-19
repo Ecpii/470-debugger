@@ -12,7 +12,8 @@ use crate::{
 };
 
 // true if we can use the raw name as the key to index
-const HEADERS: [(&str, bool); 7] = [
+const HEADERS: [(&str, bool); 8] = [
+    ("#", false),
     ("dest_tag", true),
     ("rs1_tag", true),
     ("rs2_tag", true),
@@ -112,6 +113,8 @@ impl StatefulWidget for RSTable {
                             format!("{}", value)
                         }
                     }
+                } else if *name == "#" {
+                    i.to_string()
                 } else if *name == "op" {
                     let opinfo_base = format!("{row_base}.op");
                     snapshots.render_opinfo(&opinfo_base)
