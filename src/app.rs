@@ -54,7 +54,8 @@ impl App {
         let structures = Structures::new(&snapshots);
         let search_query = snapshots.get_base() + ".";
         let search_matches = snapshots.autocomplete_var(&search_query);
-        Self {
+
+        let mut s = Self {
             running: false,
             snapshots,
             watch_list: Vec::new(),
@@ -67,7 +68,11 @@ impl App {
             cycle_jump: 1,
             watch_list_state: ListState::default(),
             error_message: None,
-        }
+        };
+
+        s.load_watch_list();
+
+        s
     }
 
     /// Run the application's main loop.
@@ -392,6 +397,7 @@ impl App {
 
     /// Set running to false to quit the application.
     fn quit(&mut self) {
+        self.save_watch_list();
         self.running = false;
     }
 }
