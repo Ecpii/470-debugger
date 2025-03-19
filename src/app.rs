@@ -361,7 +361,9 @@ impl App {
     }
 
     fn handle_down_key(&mut self) {
-        self.watch_list_state.select_next();
+        if !self.watch_list.is_empty() {
+            self.watch_list_state.select_next();
+        }
     }
 
     fn increase_jump(&mut self) {
