@@ -5,6 +5,7 @@ use std::io::BufReader;
 use std::{fs::File, io};
 use vcd::{self, Header, IdCode, Scope, ScopeItem, Value, Vector};
 
+use crate::utils::o3oInst;
 use crate::var_index::VarIndex;
 
 pub enum DifferenceType {
@@ -273,6 +274,7 @@ impl Snapshots {
         let Ok(inst) = (inst_bits as u32).decode(Isa::Rv32) else {
             return format!("{pc}: <invalid>");
         };
+        let inst = o3oInst(inst);
 
         format!("{pc}: {inst}")
     }
