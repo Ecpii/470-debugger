@@ -85,7 +85,7 @@ impl StatefulWidget for ROBTable {
                 let width = value_str.len();
 
                 row_cells.push(Cell::new(value_str));
-                widths[j] = max(widths[j], width as u16);
+                widths[j + 1] = max(widths[j + 1], width as u16);
             }
 
             let mut row = Row::new(row_cells);

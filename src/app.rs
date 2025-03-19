@@ -1,5 +1,6 @@
 use std::cmp::min;
 
+use crate::utils::{load_watch_list, save_watch_list};
 use color_eyre::Result;
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use ratatui::{
@@ -272,6 +273,11 @@ impl App {
             (_, KeyCode::Char('e')) => self.snapshots.go_to_end(),
             (_, KeyCode::Char('d')) => self.delete_selected_watch(),
 
+            (_, KeyCode::Char('w')) => self.save_watch_list(),
+            (_, KeyCode::Char('r')) => {
+                self.load_watch_list().expect("load list failed");
+            }
+
             (_, KeyCode::Char('?')) => {
                 if self.show_popup.is_some() {
                     self.show_popup = None;
@@ -288,6 +294,21 @@ impl App {
             (_, KeyCode::Right | KeyCode::Char('l')) => self.handle_right_key(),
             _ => {}
         }
+    }
+
+    fn save_watch_list(&self) {
+        if self.watch_list.is_empty() {
+            return;
+        }
+
+        // todo: handle this
+        let _ = save_watch_list(&self.watch_list, "last");
+    }
+
+    fn load_watch_list(&mut self) -> Result<()> {
+        // todo: we could change the name so you can have multiple watch lists
+        self.watch_list = load_watch_list("last")?;
+        Ok(())
     }
 
     fn handle_search_enter(&mut self) {

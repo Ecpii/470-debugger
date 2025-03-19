@@ -6,6 +6,7 @@ pub mod app;
 mod logging;
 pub mod snapshots;
 pub mod structures;
+pub mod utils;
 pub mod var_index;
 
 fn parse_args() -> String {
