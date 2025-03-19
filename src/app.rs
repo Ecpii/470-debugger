@@ -34,6 +34,7 @@ pub struct App {
     structures: Structures,
     cycle_jump: usize,
     watch_list_state: ListState,
+    error_message: Option<String>,
 }
 
 /// helper function to create a centered rect using up certain percentage of the available rect `r`
@@ -65,6 +66,7 @@ impl App {
             structures,
             cycle_jump: 1,
             watch_list_state: ListState::default(),
+            error_message: None,
         }
     }
 
@@ -110,7 +112,11 @@ impl App {
     /// - <https://docs.rs/ratatui/latest/ratatui/widgets/index.html>
     /// - <https://github.com/ratatui/ratatui/tree/master/examples>
     fn draw(&mut self, frame: &mut Frame) {
-        let title = Line::from("o3o Debugger").bold().blue().centered();
+        let title = if let Some(error) = &self.error_message {
+            Line::from(error.clone()).bold().red().centered()
+        } else {
+            Line::from("o3o Debugger").bold().blue().centered()
+        };
 
         let instructions = if self.watch_list_state.selected().is_some() {
             Line::from(vec![
@@ -225,6 +231,7 @@ impl App {
 
     /// Handles the key events and updates the state of [`App`].
     fn on_key_event(&mut self, key: KeyEvent) {
+        self.error_message = None;
         if matches!(self.show_popup, Some(PopupType::Search)) {
             match (key.modifiers, key.code) {
                 (_, KeyCode::Esc | KeyCode::Char('/')) => {
@@ -275,7 +282,7 @@ impl App {
 
             (_, KeyCode::Char('w')) => self.save_watch_list(),
             (_, KeyCode::Char('r')) => {
-                self.load_watch_list().expect("load list failed");
+                self.load_watch_list();
             }
 
             (_, KeyCode::Char('?')) => {
@@ -296,19 +303,26 @@ impl App {
         }
     }
 
-    fn save_watch_list(&self) {
+    fn save_watch_list(&mut self) {
         if self.watch_list.is_empty() {
             return;
         }
 
-        // todo: handle this
-        let _ = save_watch_list(&self.watch_list, "last");
+        if let Err(e) = save_watch_list(&self.watch_list, "last") {
+            self.error_message = Some(format!("Error saving watch list: {}", e));
+        };
     }
 
-    fn load_watch_list(&mut self) -> Result<()> {
+    fn load_watch_list(&mut self) {
         // todo: we could change the name so you can have multiple watch lists
-        self.watch_list = load_watch_list("last")?;
-        Ok(())
+        match load_watch_list("last") {
+            Ok(list) => {
+                self.watch_list = list;
+            }
+            Err(e) => {
+                self.error_message = Some(format!("Error loading watch list: {}", e));
+            }
+        }
     }
 
     fn handle_search_enter(&mut self) {
@@ -329,7 +343,7 @@ impl App {
                     }
                 }
             } else {
-                // todo: provide visual feedback that search was not good
+                self.error_message = Some(String::from("Invalid wire path!"));
                 return;
             }
         }
