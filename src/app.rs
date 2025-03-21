@@ -133,6 +133,8 @@ impl App {
                 "</>".blue().bold(),
                 " Delete ".into(),
                 "<d>".blue().bold(),
+                " Change type ".into(),
+                "<c>".blue().bold(),
                 " Quit ".into(),
                 "<Q> ".blue().bold(),
             ])
@@ -205,6 +207,11 @@ impl App {
                         ]),
                         Line::from(vec!["<+/->".blue().bold(), " Change increment\n".into()]),
                         Line::from(vec!["<Up/Down>".blue().bold(), " Select Variable\n".into()]),
+                        Line::from(vec!["<d>".blue().bold(), " Delete selected watch\n".into()]),
+                        Line::from(vec![
+                            "<c>".blue().bold(),
+                            " Change selected watch type (binary, decimal, hex)\n".into(),
+                        ]),
                         Line::from(vec![
                             "<s>".blue().bold(),
                             " Go To Start / ".into(),
@@ -283,16 +290,21 @@ impl App {
             // Add other key handlers here.
             (_, KeyCode::Char('=') | KeyCode::Char('+')) => self.increase_jump(),
             (_, KeyCode::Char('-') | KeyCode::Char('_')) => self.decrease_jump(),
-            (_, KeyCode::Char('s')) => self.snapshots.go_to_start(),
-            (_, KeyCode::Char('e')) => self.snapshots.go_to_end(),
+            (_, KeyCode::Char('s') | KeyCode::Char('0')) => self.snapshots.go_to_start(),
+            (_, KeyCode::Char('e') | KeyCode::Char('$')) => self.snapshots.go_to_end(),
             (_, KeyCode::Char('d')) => self.delete_selected_watch(),
 
-            (_, KeyCode::Char('w')) => self.save_watch_list(),
-            (_, KeyCode::Char('r')) => {
-                self.load_watch_list();
-            }
+            // (_, KeyCode::Char('w')) => self.save_watch_list(),
+            // (_, KeyCode::Char('r')) => {
+            //     self.load_watch_list();
+            // }
             (_, KeyCode::Char('c')) => self.change_selected_watch_mode(),
 
+            (_, KeyCode::Esc) => {
+                if self.show_popup.is_some() {
+                    self.show_popup = None;
+                }
+            }
             (_, KeyCode::Char('?')) => {
                 if self.show_popup.is_some() {
                     self.show_popup = None;

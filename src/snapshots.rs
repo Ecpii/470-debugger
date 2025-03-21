@@ -293,7 +293,7 @@ impl Snapshots {
     }
 
     pub fn render_opinfo(&self, base: &str) -> String {
-        let pc = self.get_var(&format!("{base}.PC")).unwrap().as_decimal();
+        let pc = self.get_var(&format!("{base}.PC")).unwrap().as_usize();
 
         // return format!("{}", self.get_var(&format!("{base}.inst.inst")).unwrap());
 
@@ -306,7 +306,7 @@ impl Snapshots {
         };
         let inst = o3oInst(inst);
 
-        format!("{pc}: {inst}")
+        format!("{pc:x}: {inst}")
     }
 }
 
