@@ -2,15 +2,60 @@ use core::fmt;
 use std::{
     fmt::{Display, Formatter},
     fs::{self},
-    io::Result,
+    io::{Error, ErrorKind, Result},
 };
 
 use raki::{
     AOpcode, BaseIOpcode, COpcode, InstFormat, Instruction, OpcodeKind, PrivOpcode, ZifenceiOpcode,
 };
 
-pub fn save_watch_list(watch_list: &[String], name: &str) -> Result<()> {
-    let write_data = watch_list.join("\n");
+#[derive(Clone, Copy)]
+pub enum DisplayType {
+    Binary,
+    Decimal,
+    Hex,
+}
+impl DisplayType {
+    pub fn next(&self) -> Self {
+        match self {
+            DisplayType::Binary => DisplayType::Decimal,
+            DisplayType::Decimal => DisplayType::Hex,
+            DisplayType::Hex => DisplayType::Binary,
+        }
+    }
+}
+impl Display for DisplayType {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                DisplayType::Binary => "Binary",
+                DisplayType::Decimal => "Decimal",
+                DisplayType::Hex => "Hex",
+            }
+        )
+    }
+}
+impl TryFrom<&str> for DisplayType {
+    type Error = std::io::Error;
+
+    fn try_from(value: &str) -> std::result::Result<Self, Self::Error> {
+        match value {
+            "Binary" => Ok(DisplayType::Binary),
+            "Decimal" => Ok(DisplayType::Decimal),
+            "Hex" => Ok(DisplayType::Hex),
+            _ => Err(Error::new(ErrorKind::InvalidData, "Invalid display type!")),
+        }
+    }
+}
+
+pub fn save_watch_list(watch_list: &[(String, DisplayType)], name: &str) -> Result<()> {
+    let mut write_data = String::new();
+
+    for (key, disp_type) in watch_list {
+        write_data.push_str(&format!("{key},{disp_type}\n"));
+    }
     let filename = format!("debugger_files/{name}.dbg_list");
 
     fs::write(&filename, write_data)?;
@@ -18,12 +63,33 @@ pub fn save_watch_list(watch_list: &[String], name: &str) -> Result<()> {
     Ok(())
 }
 
-pub fn load_watch_list(name: &str) -> Result<Vec<String>> {
+pub fn load_watch_list(name: &str) -> Result<Vec<(String, DisplayType)>> {
     let filename = format!("debugger_files/{name}.dbg_list");
-
     let data = fs::read_to_string(&filename)?;
+    let lines = data.split("\n");
 
-    let watch_list = data.split("\n").map(|x| x.to_owned()).collect();
+    let mut watch_list = Vec::new();
+
+    for line in lines {
+        if line.is_empty() {
+            continue;
+        }
+        let mut parts = line.split(",");
+
+        let Some(key) = parts.next() else {
+            return Err(Error::new(ErrorKind::InvalidData, "Empty line in data!"));
+        };
+        let Some(disp_type_str) = parts.next() else {
+            return Err(Error::new(
+                ErrorKind::InvalidData,
+                "Display type not found in line!",
+            ));
+        };
+        let disp_type: DisplayType = disp_type_str.try_into()?;
+
+        watch_list.push((key.to_string(), disp_type))
+    }
+
     Ok(watch_list)
 }
 

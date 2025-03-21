@@ -1,6 +1,6 @@
 use std::cmp::min;
 
-use crate::utils::{load_watch_list, save_watch_list};
+use crate::utils::{load_watch_list, save_watch_list, DisplayType};
 use color_eyre::Result;
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use ratatui::{
@@ -25,7 +25,7 @@ pub struct App {
     /// Is the application running?
     running: bool,
     snapshots: Snapshots,
-    watch_list: Vec<String>,
+    watch_list: Vec<(String, DisplayType)>,
     show_popup: Option<PopupType>,
     search_input: Input,
     search_query: String,
@@ -97,9 +97,11 @@ impl App {
 
         let mut lines = Vec::new();
 
-        for name in self.watch_list.iter() {
+        for (name, display_type) in self.watch_list.iter() {
             if let Some(value) = self.snapshots.get_var(name) {
-                lines.push(Text::from(format!("{}: {}\n", name, value)).centered());
+                lines.push(
+                    Text::from(format!("{}: {}\n", name, value.format(display_type))).centered(),
+                );
             } else {
                 lines.push(Text::from(format!("{name} not found!\n")).dim().centered());
             }
@@ -289,6 +291,7 @@ impl App {
             (_, KeyCode::Char('r')) => {
                 self.load_watch_list();
             }
+            (_, KeyCode::Char('c')) => self.change_selected_watch_mode(),
 
             (_, KeyCode::Char('?')) => {
                 if self.show_popup.is_some() {
@@ -339,12 +342,13 @@ impl App {
 
         if !value.is_empty() {
             if self.snapshots.get_var(value).is_some() {
-                self.watch_list.push(value.to_owned());
+                self.watch_list
+                    .push((value.to_owned(), DisplayType::Binary));
             } else if let Some(scope) = self.snapshots.get_scope(value) {
                 for s in scope.items.iter() {
                     if let ScopeItem::Var(v) = s {
                         let new_name = value.to_owned() + "." + &v.reference;
-                        self.watch_list.push(new_name);
+                        self.watch_list.push((new_name, DisplayType::Binary));
                     }
                 }
             } else {
@@ -354,6 +358,14 @@ impl App {
         }
         self.search_input = Input::new(self.snapshots.get_base() + ".");
         self.show_popup = None;
+    }
+
+    fn change_selected_watch_mode(&mut self) {
+        let Some(index) = self.watch_list_state.selected() else {
+            return;
+        };
+        let current_type = self.watch_list.get(index).unwrap().1;
+        self.watch_list[index].1 = current_type.next();
     }
 
     fn delete_selected_watch(&mut self) {

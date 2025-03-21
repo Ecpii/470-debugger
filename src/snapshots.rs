@@ -5,7 +5,7 @@ use std::io::BufReader;
 use std::{fs::File, io};
 use vcd::{self, Header, IdCode, Scope, ScopeItem, Value, Vector};
 
-use crate::utils::o3oInst;
+use crate::utils::{o3oInst, DisplayType};
 use crate::var_index::VarIndex;
 
 pub enum DifferenceType {
@@ -13,15 +13,45 @@ pub enum DifferenceType {
     Clearance,
 }
 
-type Differences = HashMap<IdCode, DifferenceType>;
-
 #[derive(Debug, Clone)]
 pub enum VerilogValue {
     Scalar(Value),
     Vector(Vector),
 }
 
+// todo: honestly just move this struct into a new file
 impl VerilogValue {
+    pub fn format(&self, display_type: &DisplayType) -> String {
+        match display_type {
+            DisplayType::Binary => format!("{}", self),
+            DisplayType::Decimal => self.as_decimal(),
+            DisplayType::Hex => self.as_hex(),
+        }
+    }
+
+    pub fn as_hex(&self) -> String {
+        match self {
+            VerilogValue::Scalar(value) => {
+                format!("{}", value)
+            }
+            VerilogValue::Vector(vector) => {
+                let mut bits = Vec::new();
+
+                for item in vector.iter() {
+                    bits.push(match item {
+                        Value::V0 => 0,
+                        Value::V1 => 1,
+                        Value::X => return String::from("X"),
+                        Value::Z => return String::from("Z"),
+                    })
+                }
+
+                let val = bits.iter().fold(0, |res, new| (res << 1) + new);
+                format!("{:#x}", val)
+            }
+        }
+    }
+
     pub fn as_decimal(&self) -> String {
         match self {
             VerilogValue::Scalar(value) => {
