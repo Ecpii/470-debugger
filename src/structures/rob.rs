@@ -64,6 +64,10 @@ impl StatefulWidget for ROBTable {
             .get_var(&format!("{}.tail", self.base))
             .unwrap()
             .as_usize();
+        let rob_size = snapshots
+            .get_var(&format!("{}.size", self.base))
+            .unwrap()
+            .as_usize();
 
         for i in 0..self.size {
             let mut row_cells: Vec<Cell> = vec![];
@@ -114,6 +118,7 @@ impl StatefulWidget for ROBTable {
                 row = row.on_red()
             } else if (tail_index > head_index && head_index < i && i < tail_index)
                 || (tail_index < head_index && !(tail_index < i && i < head_index))
+                || (head_index == tail_index && rob_size > 0) // full case
             {
                 row = row.on_yellow()
             } else {
