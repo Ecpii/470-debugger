@@ -189,7 +189,6 @@ impl Snapshots {
 
             match command {
                 Timestamp(time) => {
-                    // println!("\nTime: {time}")
                     if time != 0 {
                         shots.push(snapshot.clone());
                         snapshot.time = time;
@@ -275,10 +274,6 @@ impl Snapshots {
     }
 
     pub fn get_var(&self, var_name: &str) -> Option<&VerilogValue> {
-        // let name_list: Vec<_> = var_name.split('.').collect();
-        // let var = self.header.find_var(&name_list)?;
-        // self.shots[self.index].variables.get(&var.code)
-
         let code = self.var_index.get(var_name)?;
         self.shots[self.index].variables.get(&code)
     }
@@ -295,8 +290,6 @@ impl Snapshots {
     pub fn render_opinfo(&self, base: &str) -> String {
         let pc = self.get_var(&format!("{base}.PC")).unwrap().as_usize();
 
-        // return format!("{}", self.get_var(&format!("{base}.inst.inst")).unwrap());
-
         let inst_bits = self
             .get_var(&format!("{base}.inst.inst"))
             .unwrap()
@@ -307,15 +300,5 @@ impl Snapshots {
         let inst = o3oInst(inst);
 
         format!("{pc:x}: {inst}")
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn scratch() {
-        let _ = Snapshots::new("rs.vcd");
     }
 }
