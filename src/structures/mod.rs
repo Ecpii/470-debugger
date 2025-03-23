@@ -1,3 +1,4 @@
+use branch_stack::BranchStack;
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::widgets::StatefulWidget;
 use rob::ROBTable;
@@ -6,6 +7,8 @@ use vcd::{ScopeItem, ScopeType};
 
 use crate::snapshots::Snapshots;
 
+mod branch_stack;
+mod map_table;
 mod rob;
 mod rs;
 
@@ -13,12 +16,14 @@ mod rs;
 pub struct Structures {
     rs: Option<RSTable>,
     rob: Option<ROBTable>,
+    bstack: Option<BranchStack>,
 }
 
 impl Structures {
     pub fn new(snapshots: &Snapshots) -> Self {
         let mut rs = None;
         let mut rob = None;
+        let mut bstack = None;
 
         let base = snapshots.get_base();
         let testbench = snapshots.header.find_scope(&[base.clone()]).unwrap();
@@ -35,6 +40,9 @@ impl Structures {
             }
             if rob.is_none() {
                 rob = ROBTable::new(&new_base_outer, snapshots);
+            }
+            if bstack.is_none() {
+                bstack = BranchStack::new(&new_base_outer, snapshots);
             }
 
             for scope_item in scope_outer.items.iter() {
@@ -54,12 +62,15 @@ impl Structures {
                 if rob.is_none() {
                     rob = ROBTable::new(&new_base, snapshots);
                 }
+                if bstack.is_none() {
+                    bstack = BranchStack::new(&new_base, snapshots);
+                }
             }
         }
 
         // trace_dbg!(&rs);
 
-        Self { rs, rob }
+        Self { rs, rob, bstack }
     }
 }
 
@@ -81,7 +92,9 @@ impl StatefulWidget for Structures {
         buf: &mut ratatui::prelude::Buffer,
         state: &mut Self::State,
     ) {
-        if let Some(rs) = self.rs {
+        if let Some(bstack) = self.bstack {
+            bstack.render(area, buf, state);
+        } else if let Some(rs) = self.rs {
             if let Some(rob) = self.rob {
                 let chunks = split_rectangle_horizontal(area);
                 rs.render(chunks[0], buf, state);
