@@ -319,7 +319,9 @@ impl App {
             (_, KeyCode::Down | KeyCode::Char('j')) => self.handle_down_key(),
             (_, KeyCode::Up | KeyCode::Char('k')) => self.handle_up_key(),
             (_, KeyCode::Right | KeyCode::Char('l')) => self.handle_right_key(),
-            _ => {}
+            _ => {
+                self.structures.on_key_event(key);
+            }
         }
     }
 

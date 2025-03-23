@@ -4,11 +4,11 @@ use ratatui::{
     buffer::Buffer,
     layout::Rect,
     style::Stylize,
-    text::{Line, Text},
+    text::Line,
     widgets::{Block, Cell, Row, StatefulWidget, Table, Widget},
 };
 
-use crate::{snapshots::Snapshots, trace_dbg};
+use crate::snapshots::Snapshots;
 
 const HEADERS: [(&str, bool); 2] = [("arch_reg", false), ("phys_reg", false)];
 

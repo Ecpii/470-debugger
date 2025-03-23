@@ -6,13 +6,13 @@ use ratatui::{
     widgets::{Block, StatefulWidget, Widget},
 };
 
-use crate::{snapshots::Snapshots, trace_dbg};
+use crate::snapshots::Snapshots;
 
 use super::map_table::MapTable;
 
 #[derive(Clone)]
 pub struct BranchStack {
-    base: String,
+    _base: String,
     map_table: MapTable,
 }
 
@@ -21,7 +21,7 @@ impl BranchStack {
         snapshots.get_var(&format!("{base}.dbg_this_is_bstack"))?;
 
         Some(Self {
-            base: base.to_owned(),
+            _base: base.to_owned(),
             map_table: MapTable::new(
                 &format!("{base}.checkpoint_to_restore.map_table"),
                 snapshots,
