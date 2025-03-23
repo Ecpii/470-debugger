@@ -76,9 +76,14 @@ impl StatefulWidget for ROBTable {
             for (j, (name, is_key)) in HEADERS.iter().enumerate() {
                 if *name == "h/t" {
                     if i == head_index {
-                        row_cells.push(Cell::new(Text::from("h").centered()).bold())
+                        if i == tail_index {
+                            row_cells.push(Cell::new(Text::from("h|t").centered()).bold())
+                        }
+                        else{
+                            row_cells.push(Cell::new(Text::from(" h ").centered()).bold())
+                        }
                     } else if i == tail_index {
-                        row_cells.push(Cell::new(Text::from("t").centered()).bold())
+                        row_cells.push(Cell::new(Text::from(" t ").centered()).bold())
                     } else {
                         row_cells.push(Cell::new(""))
                     }
@@ -113,7 +118,12 @@ impl StatefulWidget for ROBTable {
             let mut row = Row::new(row_cells);
 
             if i == head_index {
-                row = row.on_green()
+                if i == tail_index {
+                    row = row.on_light_magenta()
+                }
+                else{
+                    row = row.on_green()
+                }
             } else if i == tail_index {
                 row = row.on_red()
             } else if (tail_index > head_index && head_index < i && i < tail_index)
