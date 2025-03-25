@@ -1,4 +1,5 @@
 use branch_stack::BranchStack;
+use branches::Btb;
 use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::buffer::Buffer;
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
@@ -13,6 +14,7 @@ use strum::{EnumCount, IntoEnumIterator};
 use strum_macros::{Display, EnumCount as EnumCountMacro, EnumIter, FromRepr};
 
 mod branch_stack;
+mod branches;
 mod map_table;
 mod rob;
 mod rs;
@@ -55,6 +57,7 @@ pub struct Structures {
     rs: Option<RSTable>,
     rob: Option<ROBTable>,
     bstack: Option<BranchStack>,
+    btb: Option<Btb>,
     selected_tab: SelectedTab,
 }
 
@@ -83,6 +86,7 @@ impl Structures {
         let mut rs = None;
         let mut rob = None;
         let mut bstack = None;
+        let mut btb = None;
 
         let base = snapshots.get_base();
         let testbench = snapshots.header.find_scope(&[base.clone()]).unwrap();
@@ -102,6 +106,9 @@ impl Structures {
             }
             if bstack.is_none() {
                 bstack = BranchStack::new(&new_base_outer, snapshots);
+            }
+            if btb.is_none() {
+                btb = Btb::new(&new_base_outer, snapshots);
             }
 
             for scope_item in scope_outer.items.iter() {
@@ -124,15 +131,17 @@ impl Structures {
                 if bstack.is_none() {
                     bstack = BranchStack::new(&new_base, snapshots);
                 }
+                if btb.is_none() {
+                    btb = Btb::new(&new_base, snapshots);
+                }
             }
         }
-
-        // trace_dbg!(&rs);
 
         Self {
             rs,
             rob,
             bstack,
+            btb,
             selected_tab: SelectedTab::default(),
         }
     }
@@ -177,7 +186,18 @@ impl StatefulWidget for Structures {
                     self.rob.unwrap().render(areas[1], buf, state);
                 }
                 SelectedTab::BStack => {
-                    self.bstack.unwrap().render(inner_area, buf, state);
+                    if let Some(btb) = self.btb {
+                        let [top_area, bottom_area] = Layout::vertical([
+                            Constraint::Length(btb.size as u16 + 1 + 2),
+                            Constraint::Fill(1),
+                        ])
+                        .areas(inner_area);
+
+                        btb.render(top_area, buf, state);
+                        self.bstack.unwrap().render(bottom_area, buf, state);
+                    } else {
+                        self.bstack.unwrap().render(inner_area, buf, state);
+                    }
                 }
             }
 
@@ -190,6 +210,8 @@ impl StatefulWidget for Structures {
                 rob.render(area, buf, state);
             } else if let Some(bstack) = self.bstack {
                 bstack.render(area, buf, state);
+            } else if let Some(btb) = self.btb {
+                btb.render(area, buf, state);
             }
         }
     }
