@@ -218,6 +218,7 @@ impl App {
                             "<e>".blue().bold(),
                             " Go To End\n".into(),
                         ]),
+                        Line::from(vec!["<Tab>".blue().bold(), " Switch View\n".into()]),
                         Line::from(vec!["<q>".blue().bold(), " Quit ".into()]),
                     ])
                     .block(Block::bordered().title("Keybindings"));
