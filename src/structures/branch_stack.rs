@@ -23,7 +23,7 @@ impl BranchStack {
         Some(Self {
             _base: base.to_owned(),
             map_table: MapTable::new(
-                &format!("{base}.checkpoint_to_restore.map_table"),
+                &format!("{base}.active_checkpoint.map_table"),
                 snapshots,
             ),
         })

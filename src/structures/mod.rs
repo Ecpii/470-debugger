@@ -177,7 +177,9 @@ impl StatefulWidget for Structures {
                     self.rob.unwrap().render(areas[1], buf, state);
                 }
                 SelectedTab::BStack => {
-                    self.bstack.unwrap().render(inner_area, buf, state);
+                    let areas = split_rectangle_horizontal(inner_area);
+                    self.bstack.unwrap().render(areas[0], buf, state);
+                    self.rob.unwrap().render(areas[1], buf, state);
                 }
             }
 
