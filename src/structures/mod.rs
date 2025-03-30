@@ -1,4 +1,5 @@
 use branch_stack::BranchStack;
+use branches::Btb;
 use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::buffer::Buffer;
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
@@ -6,13 +7,14 @@ use ratatui::style::{Color, Style};
 use ratatui::widgets::{StatefulWidget, Tabs, Widget};
 use rob::ROBTable;
 use rs::RSTable;
-use vcd::{ScopeItem, ScopeType};
+use vcd::ScopeItem;
 
 use crate::snapshots::Snapshots;
 use strum::{EnumCount, IntoEnumIterator};
 use strum_macros::{Display, EnumCount as EnumCountMacro, EnumIter, FromRepr};
 
 mod branch_stack;
+mod branches;
 mod map_table;
 mod rob;
 mod rs;
@@ -52,9 +54,11 @@ impl SelectedTab {
 
 #[derive(Clone)]
 pub struct Structures {
+    is_cpu: bool,
     rs: Option<RSTable>,
     rob: Option<ROBTable>,
     bstack: Option<BranchStack>,
+    btb: Option<Btb>,
     selected_tab: SelectedTab,
 }
 
@@ -83,37 +87,30 @@ impl Structures {
         let mut rs = None;
         let mut rob = None;
         let mut bstack = None;
+        let mut btb = None;
+        let mut is_cpu = false;
 
         let base = snapshots.get_base();
         let testbench = snapshots.header.find_scope(&[base.clone()]).unwrap();
 
-        for scope_item_outer in testbench.items.iter() {
-            let ScopeItem::Scope(scope_outer) = scope_item_outer else {
+        for scope_item in testbench.items.iter() {
+            let ScopeItem::Scope(scope) = scope_item else {
                 continue;
             };
-            let new_base_outer = format!("{base}.{}", scope_outer.identifier);
+            let new_base = format!("{base}.{}", scope.identifier);
 
-            // try to fit each module into rs or rob if they match the shape
-            if rs.is_none() {
-                rs = RSTable::new(&new_base_outer, snapshots);
-            }
-            if rob.is_none() {
-                rob = ROBTable::new(&new_base_outer, snapshots);
-            }
-            if bstack.is_none() {
-                bstack = BranchStack::new(&new_base_outer, snapshots);
-            }
+            let cpu_var = format!("{new_base}.dbg_this_is_cpu");
+            is_cpu = snapshots.get_var(&cpu_var).is_some();
 
-            for scope_item in scope_outer.items.iter() {
-                let ScopeItem::Scope(scope) = scope_item else {
-                    continue;
-                };
-                if !matches!(scope.scope_type, ScopeType::Module) {
-                    continue;
-                }
+            if is_cpu {
+                // get all the cpu paths
+                rs = RSTable::new(&format!("{new_base}.rs_module"), snapshots);
+                rob = ROBTable::new(&format!("{new_base}.rob_module"), snapshots);
+                bstack = BranchStack::new(&format!("{new_base}.branch_stack_module"), snapshots);
+                btb = Btb::new(&format!("{new_base}.btb"), snapshots);
 
-                let new_base = format!("{base}.{}.{}", scope_outer.identifier, scope.identifier);
-
+                break;
+            } else {
                 // try to fit each module into rs or rob if they match the shape
                 if rs.is_none() {
                     rs = RSTable::new(&new_base, snapshots);
@@ -124,15 +121,18 @@ impl Structures {
                 if bstack.is_none() {
                     bstack = BranchStack::new(&new_base, snapshots);
                 }
+                if btb.is_none() {
+                    btb = Btb::new(&new_base, snapshots);
+                }
             }
         }
-
-        // trace_dbg!(&rs);
 
         Self {
             rs,
             rob,
             bstack,
+            btb,
+            is_cpu,
             selected_tab: SelectedTab::default(),
         }
     }
@@ -156,10 +156,7 @@ impl StatefulWidget for Structures {
         buf: &mut ratatui::prelude::Buffer,
         state: &mut Self::State,
     ) {
-        // dirty assumption that if we have both rs and rob, it must be a cpu test
-        let is_cpu = self.rs.is_some() && self.rob.is_some();
-
-        if is_cpu {
+        if self.is_cpu {
             use Constraint::{Length, Min};
             let vertical = Layout::vertical([Length(1), Min(0)]);
             let [header_area, inner_area] = vertical.areas(area);
@@ -167,7 +164,6 @@ impl StatefulWidget for Structures {
             let horizontal = Layout::horizontal([Min(0), Length(20)]);
             let [tabs_area, _title_area] = horizontal.areas(header_area);
 
-            // render_title(title_area, buf);
             self.render_tabs(tabs_area, buf);
 
             match self.selected_tab {
@@ -178,12 +174,23 @@ impl StatefulWidget for Structures {
                 }
                 SelectedTab::BStack => {
                     let areas = split_rectangle_horizontal(inner_area);
-                    self.bstack.unwrap().render(areas[0], buf, state);
-                    self.rob.unwrap().render(areas[1], buf, state);
+                    if let Some(btb) = self.btb {
+                        let [top_area, bottom_area] = Layout::vertical([
+                            Constraint::Length(btb.size as u16 + 1 + 2),
+                            Constraint::Fill(1),
+                        ])
+                        .areas(inner_area);
+
+                        btb.render(top_area, buf, state);
+                        let bottom_areas = split_rectangle_horizontal(bottom_area);
+                        self.bstack.unwrap().render(bottom_areas[0], buf, state);
+                        self.rob.unwrap().render(bottom_areas[1], buf, state);
+                    } else {
+                        self.bstack.unwrap().render(areas[0], buf, state);
+                        self.rob.unwrap().render(areas[1], buf, state);
+                    }
                 }
             }
-
-            // render_footer(footer_area, buf);
         } else {
             // assumption: just a single module test (though this could change in the future)
             if let Some(rs) = self.rs {
@@ -192,6 +199,8 @@ impl StatefulWidget for Structures {
                 rob.render(area, buf, state);
             } else if let Some(bstack) = self.bstack {
                 bstack.render(area, buf, state);
+            } else if let Some(btb) = self.btb {
+                btb.render(area, buf, state);
             }
         }
     }

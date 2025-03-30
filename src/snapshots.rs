@@ -178,7 +178,7 @@ impl Snapshots {
         let mut shots = Vec::new();
 
         let mut snapshot = Snapshot {
-            time: 0,
+        time: 0,
             clock_count: 0,
             variables: HashMap::new(),
         };
