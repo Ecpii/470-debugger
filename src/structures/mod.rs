@@ -1,6 +1,7 @@
 use branch_stack::BranchStack;
 use branches::Btb;
 use crossterm::event::{KeyCode, KeyEvent};
+use issue::Issue;
 use ratatui::buffer::Buffer;
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::style::{Color, Style};
@@ -15,6 +16,7 @@ use strum_macros::{Display, EnumCount as EnumCountMacro, EnumIter, FromRepr};
 
 mod branch_stack;
 mod branches;
+mod issue;
 mod map_table;
 mod rob;
 mod rs;
@@ -26,6 +28,8 @@ enum SelectedTab {
     RsRob,
     #[strum(to_string = "Branch Stack")]
     BStack,
+    #[strum(to_string = "Issue/FUs")]
+    IssueFUs,
 }
 
 impl SelectedTab {
@@ -59,6 +63,7 @@ pub struct Structures {
     rob: Option<ROBTable>,
     bstack: Option<BranchStack>,
     btb: Option<Btb>,
+    issue: Option<Issue>,
     selected_tab: SelectedTab,
 }
 
@@ -88,6 +93,7 @@ impl Structures {
         let mut rob = None;
         let mut bstack = None;
         let mut btb = None;
+        let mut issue = None;
         let mut is_cpu = false;
 
         let base = snapshots.get_base();
@@ -108,6 +114,7 @@ impl Structures {
                 rob = ROBTable::new(&format!("{new_base}.rob_module"), snapshots);
                 bstack = BranchStack::new(&format!("{new_base}.branch_stack_module"), snapshots);
                 btb = Btb::new(&format!("{new_base}.btb"), snapshots);
+                issue = Issue::new(&format!("{new_base}.issue_module"), snapshots);
 
                 break;
             } else {
@@ -124,6 +131,9 @@ impl Structures {
                 if btb.is_none() {
                     btb = Btb::new(&new_base, snapshots);
                 }
+                if issue.is_none() {
+                    issue = Issue::new(&new_base, snapshots);
+                }
             }
         }
 
@@ -133,6 +143,7 @@ impl Structures {
             bstack,
             btb,
             is_cpu,
+            issue,
             selected_tab: SelectedTab::default(),
         }
     }
@@ -190,6 +201,10 @@ impl StatefulWidget for Structures {
                         self.rob.unwrap().render(areas[1], buf, state);
                     }
                 }
+                SelectedTab::IssueFUs => {
+                    let areas = split_rectangle_horizontal(inner_area);
+                    todo!()
+                }
             }
         } else {
             // assumption: just a single module test (though this could change in the future)
@@ -201,6 +216,8 @@ impl StatefulWidget for Structures {
                 bstack.render(area, buf, state);
             } else if let Some(btb) = self.btb {
                 btb.render(area, buf, state);
+            } else if let Some(issue) = self.issue {
+                issue.render(area, buf, state);
             }
         }
     }

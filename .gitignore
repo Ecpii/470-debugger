@@ -1,3 +1,5 @@
 /target
 *.vcd
 debugger_files
+dbg
+
