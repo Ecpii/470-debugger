@@ -174,13 +174,18 @@ impl Snapshots {
         };
 
         let var_index = VarIndex::from_header(&header);
+        let mut variables = HashMap::new();
+
+        for var_code in var_index.vars.values() {
+            variables.insert(*var_code, VerilogValue::Scalar(Value::X));
+        }
 
         let mut shots = Vec::new();
 
         let mut snapshot = Snapshot {
-        time: 0,
+            time: 0,
             clock_count: 0,
-            variables: HashMap::new(),
+            variables,
         };
 
         for command_result in parser {
