@@ -7,6 +7,7 @@ use ratatui::buffer::Buffer;
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::style::{Color, Style};
 use ratatui::widgets::{StatefulWidget, Tabs, Widget};
+use regfile::RegFile;
 use rob::ROBTable;
 use rs::RSTable;
 use vcd::ScopeItem;
@@ -20,6 +21,7 @@ mod branches;
 mod dcache;
 mod issue;
 mod map_table;
+mod regfile;
 mod rob;
 mod rs;
 
@@ -67,6 +69,7 @@ pub struct Structures {
     btb: Option<Btb>,
     issue: Option<Issue>,
     dcache: Option<DCache>,
+    regfile: Option<RegFile>,
     selected_tab: SelectedTab,
 }
 
@@ -98,6 +101,7 @@ impl Structures {
         let mut btb = None;
         let mut issue = None;
         let mut dcache = None;
+        let mut regfile = None;
         let mut is_cpu = false;
 
         let base = snapshots.get_base();
@@ -119,6 +123,7 @@ impl Structures {
                 bstack = BranchStack::new(&format!("{new_base}.branch_stack_module"), snapshots);
                 btb = Btb::new(&format!("{new_base}.btb"), snapshots);
                 issue = Issue::new(&format!("{new_base}.issue_module"), snapshots);
+                regfile = RegFile::new(&format!("{new_base}.regfile_module"), snapshots);
 
                 break;
             } else {
@@ -141,6 +146,9 @@ impl Structures {
                 if dcache.is_none() {
                     dcache = DCache::new(&new_base, snapshots);
                 }
+                if regfile.is_none() {
+                    regfile = RegFile::new(&new_base, snapshots);
+                }
             }
         }
 
@@ -152,6 +160,7 @@ impl Structures {
             is_cpu,
             issue,
             dcache,
+            regfile,
             selected_tab: SelectedTab::default(),
         }
     }
@@ -203,7 +212,7 @@ impl StatefulWidget for Structures {
                         btb.render(top_area, buf, state);
                         let bottom_areas = split_rectangle_horizontal(bottom_area);
                         self.bstack.unwrap().render(bottom_areas[0], buf, state);
-                        self.rob.unwrap().render(bottom_areas[1], buf, state);
+                        self.regfile.unwrap().render(bottom_areas[1], buf, state);
                     } else {
                         self.bstack.unwrap().render(areas[0], buf, state);
                         self.rob.unwrap().render(areas[1], buf, state);
@@ -228,6 +237,8 @@ impl StatefulWidget for Structures {
                 issue.render(area, buf, state);
             } else if let Some(dcache) = self.dcache {
                 dcache.render(area, buf, state);
+            } else if let Some(regfile) = self.regfile {
+                regfile.render(area, buf, state);
             }
         }
     }
