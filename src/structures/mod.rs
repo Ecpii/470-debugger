@@ -1,6 +1,7 @@
 use branch_stack::BranchStack;
 use branches::Btb;
 use crossterm::event::{KeyCode, KeyEvent};
+use dcache::DCache;
 use issue::Issue;
 use ratatui::buffer::Buffer;
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
@@ -16,6 +17,7 @@ use strum_macros::{Display, EnumCount as EnumCountMacro, EnumIter, FromRepr};
 
 mod branch_stack;
 mod branches;
+mod dcache;
 mod issue;
 mod map_table;
 mod rob;
@@ -64,6 +66,7 @@ pub struct Structures {
     bstack: Option<BranchStack>,
     btb: Option<Btb>,
     issue: Option<Issue>,
+    dcache: Option<DCache>,
     selected_tab: SelectedTab,
 }
 
@@ -94,6 +97,7 @@ impl Structures {
         let mut bstack = None;
         let mut btb = None;
         let mut issue = None;
+        let mut dcache = None;
         let mut is_cpu = false;
 
         let base = snapshots.get_base();
@@ -134,6 +138,9 @@ impl Structures {
                 if issue.is_none() {
                     issue = Issue::new(&new_base, snapshots);
                 }
+                if dcache.is_none() {
+                    dcache = DCache::new(&new_base, snapshots);
+                }
             }
         }
 
@@ -144,6 +151,7 @@ impl Structures {
             btb,
             is_cpu,
             issue,
+            dcache,
             selected_tab: SelectedTab::default(),
         }
     }
@@ -218,6 +226,8 @@ impl StatefulWidget for Structures {
                 btb.render(area, buf, state);
             } else if let Some(issue) = self.issue {
                 issue.render(area, buf, state);
+            } else if let Some(dcache) = self.dcache {
+                dcache.render(area, buf, state);
             }
         }
     }
