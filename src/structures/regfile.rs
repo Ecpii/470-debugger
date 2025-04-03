@@ -1,9 +1,12 @@
+use std::ops::Range;
+
 use ratatui::{
     buffer::Buffer,
-    layout::Rect,
+    layout::{Constraint, Layout, Rect},
     style::Stylize,
+    symbols::{self, line::HORIZONTAL_UP},
     text::Line,
-    widgets::{Block, Cell, Row, StatefulWidget, Table, Widget},
+    widgets::{Block, Borders, Cell, Row, StatefulWidget, Table, Widget},
 };
 
 use crate::snapshots::Snapshots;
@@ -34,17 +37,11 @@ impl RegFile {
             size,
         })
     }
-}
 
-impl StatefulWidget for RegFile {
-    type State = Snapshots;
-
-    fn render(self, area: Rect, buf: &mut Buffer, snapshots: &mut Self::State) {
-        let header = Row::new(HEADERS.map(|(x, _)| x)).bold().on_blue();
-
+    fn get_rows(&self, snapshots: &Snapshots, range: Range<usize>) -> Vec<Row> {
         let mut rows = Vec::new();
 
-        for i in 0..self.size {
+        for i in range {
             let mut row_cells: Vec<Cell> = vec![];
 
             for (name, is_key) in HEADERS.iter() {
@@ -67,9 +64,32 @@ impl StatefulWidget for RegFile {
             rows.push(row)
         }
 
+        rows
+    }
+}
+
+impl StatefulWidget for RegFile {
+    type State = Snapshots;
+
+    fn render(self, area: Rect, buf: &mut Buffer, snapshots: &mut Self::State) {
+        let header = Row::new(HEADERS.map(|(x, _)| x)).bold().on_blue();
+
+        let first_half_rows = self.get_rows(snapshots, 0..self.size / 2);
+        let second_half_rows = self.get_rows(snapshots, self.size / 2..self.size);
+
+        let first_table = Table::new(first_half_rows, WIDTHS)
+            .header(header.clone())
+            .block(Block::new().borders(Borders::RIGHT));
+        let second_table = Table::new(second_half_rows, WIDTHS).header(header);
+
         let title = Line::from("Register File").bold().centered();
         let block = Block::bordered().title(title);
-        let table = Table::new(rows, WIDTHS).header(header).block(block);
-        Widget::render(table, area, buf);
+        let inner_area = block.inner(area);
+        Widget::render(block, area, buf);
+
+        let [left_area, right_area] =
+            Layout::horizontal([Constraint::Fill(1), Constraint::Fill(1)]).areas(inner_area);
+        Widget::render(first_table, left_area, buf);
+        Widget::render(second_table, right_area, buf);
     }
 }
