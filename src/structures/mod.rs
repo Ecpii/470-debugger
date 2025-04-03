@@ -202,8 +202,8 @@ impl StatefulWidget for Structures {
                     }
                 }
                 SelectedTab::IssueFUs => {
-                    let areas = split_rectangle_horizontal(inner_area);
-                    todo!()
+                    self.issue.unwrap().render(inner_area, buf, state);
+                    // let areas = split_rectangle_horizontal(inner_area);
                 }
             }
         } else {

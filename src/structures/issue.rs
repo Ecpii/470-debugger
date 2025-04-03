@@ -1,21 +1,25 @@
 use ratatui::{
+    layout::{Constraint, Layout, Rect},
     style::Stylize,
+    symbols,
     text::Line,
-    widgets::{Block, Cell, Row, StatefulWidget, Table, Widget},
+    widgets::{Block, Borders, Cell, Row, StatefulWidget, Table, Widget},
 };
 
 use crate::{snapshots::Snapshots, trace_dbg};
 
 // true if we can use the raw name as the key to index
-const HEADERS: [(&str, bool); 7] = [
+const HEADERS: [(&str, bool); 8] = [
+    ("rd", true),
+    ("rob_num", true),
     ("rs1_val", true),
     ("rs2_val", true),
-    ("rd", true),
     ("bmask", true),
-    ("rob_num", true),
     ("store_queue_tag", true),
+    ("mem_blocks", true),
     ("op", false),
 ];
+const WIDTHS: [u16; 8] = [3, 7, 11, 11, 11, 11, 10, 30];
 
 #[derive(Clone, Debug)]
 pub struct Issue {
@@ -23,7 +27,14 @@ pub struct Issue {
     num_alus: usize,
     num_mults: usize,
     num_branches: usize,
+    num_stores: usize,
 }
+
+const TOP_BORDER_SET: symbols::border::Set = symbols::border::Set {
+    top_left: symbols::line::NORMAL.vertical_right,
+    top_right: symbols::line::NORMAL.vertical_left,
+    ..symbols::border::PLAIN
+};
 
 impl Issue {
     pub fn new(base: &str, snapshots: &Snapshots) -> Option<Self> {
@@ -33,6 +44,7 @@ impl Issue {
         let mut num_alus = 0;
         let mut num_mults = 0;
         let mut num_branches = 0;
+        let mut num_stores = 0;
 
         let mut entry_name = format!("{base}.alu_packets[{num_alus}]");
         while snapshots.get_scope(&entry_name).is_some() {
@@ -52,16 +64,24 @@ impl Issue {
             entry_name = format!("{base}.branch_packets[{num_branches}]");
         }
 
+        entry_name = format!("{base}.store_packets[{num_stores}]");
+        while snapshots.get_scope(&entry_name).is_some() {
+            num_stores += 1;
+            entry_name = format!("{base}.store_packets[{num_stores}]");
+        }
+
         Some(Self {
             base: base.to_owned(),
             num_alus,
             num_mults,
             num_branches,
+            num_stores,
         })
     }
 
     fn parse_fu_input_packet(&self, base: &str, snapshots: &Snapshots) -> Row {
         let mut row_cells: Vec<Cell> = vec![];
+        trace_dbg!(&base);
         let is_valid = snapshots
             .get_var(&format!("{base}.valid"))
             .unwrap()
@@ -101,18 +121,73 @@ impl Issue {
     }
 
     fn get_alu_table(&self, snapshots: &Snapshots) -> Table {
-        let widths: Vec<u16> = vec![15; HEADERS.len()];
         let header = Row::new(HEADERS.map(|(x, _)| x)).bold().on_blue();
 
         let mut rows = Vec::new();
         for i in 0..self.num_alus {
-            let alu_packet_base = format!("{}.alu_packets[{i}]", self.base);
-            rows.push(self.parse_fu_input_packet(&alu_packet_base, snapshots));
+            let packet_base = format!("{}.alu_packets[{i}]", self.base);
+            rows.push(self.parse_fu_input_packet(&packet_base, snapshots));
         }
 
         let title = Line::from("ALU Packets").bold().centered();
-        let block = Block::bordered().title(title);
-        Table::new(rows, widths).header(header).block(block)
+        let block = Block::new()
+            .borders(Borders::TOP | Borders::LEFT | Borders::RIGHT)
+            .title(title);
+        Table::new(rows, WIDTHS).header(header).block(block)
+    }
+
+    fn get_mult_table(&self, snapshots: &Snapshots) -> Table {
+        let mut rows = Vec::new();
+        for i in 0..self.num_mults {
+            let packet_base = format!("{}.mult_packets[{i}]", self.base);
+            rows.push(self.parse_fu_input_packet(&packet_base, snapshots));
+        }
+
+        let title = Line::from("Mult Packets").bold().centered();
+        let block = Block::new()
+            .border_set(TOP_BORDER_SET)
+            .borders(Borders::TOP | Borders::LEFT | Borders::RIGHT)
+            .title(title);
+        Table::new(rows, WIDTHS).block(block)
+    }
+
+    fn get_branch_table(&self, snapshots: &Snapshots) -> Table {
+        let mut rows = Vec::new();
+        for i in 0..self.num_branches {
+            let packet_base = format!("{}.branch_packets[{i}]", self.base);
+            rows.push(self.parse_fu_input_packet(&packet_base, snapshots));
+        }
+
+        let title = Line::from("Branch Packets").bold().centered();
+        let block = Block::new()
+            .border_set(TOP_BORDER_SET)
+            .borders(Borders::TOP | Borders::LEFT | Borders::RIGHT)
+            .title(title);
+        Table::new(rows, WIDTHS).block(block)
+    }
+
+    fn get_store_table(&self, snapshots: &Snapshots) -> Table {
+        let mut rows = Vec::new();
+        for i in 0..self.num_stores {
+            let packet_base = format!("{}.store_packets[{i}]", self.base);
+            rows.push(self.parse_fu_input_packet(&packet_base, snapshots));
+        }
+
+        let title = Line::from("Store Packets").bold().centered();
+        let block = Block::new()
+            .border_set(TOP_BORDER_SET)
+            .borders(Borders::TOP | Borders::LEFT | Borders::RIGHT)
+            .title(title);
+        Table::new(rows, WIDTHS).block(block)
+    }
+
+    fn get_load_table(&self, snapshots: &Snapshots) -> Table {
+        let packet_base = format!("{}.load_packet", self.base);
+        let row = self.parse_fu_input_packet(&packet_base, snapshots);
+
+        let title = Line::from("Load Packet").bold().centered();
+        let block = Block::bordered().border_set(TOP_BORDER_SET).title(title);
+        Table::new([row], WIDTHS).block(block)
     }
 }
 
@@ -125,13 +200,24 @@ impl StatefulWidget for Issue {
         buf: &mut ratatui::prelude::Buffer,
         snapshots: &mut Self::State,
     ) {
-        let table = self.get_alu_table(snapshots);
-
         let title = Line::from("Issue").bold().centered();
         let block = Block::bordered().title(title);
         let inner_area = block.inner(area);
         Widget::render(block, area, buf);
 
-        Widget::render(table, inner_area, buf);
+        let areas: [Rect; 5] = Layout::vertical([
+            Constraint::Length((1 + 1 + self.num_alus) as u16),
+            Constraint::Length((1 + self.num_mults) as u16),
+            Constraint::Length((1 + self.num_branches) as u16),
+            Constraint::Length((1 + self.num_stores) as u16),
+            Constraint::Length((2 + 1) as u16),
+        ])
+        .areas(inner_area);
+
+        Widget::render(self.get_alu_table(snapshots), areas[0], buf);
+        Widget::render(self.get_mult_table(snapshots), areas[1], buf);
+        Widget::render(self.get_branch_table(snapshots), areas[2], buf);
+        Widget::render(self.get_store_table(snapshots), areas[3], buf);
+        Widget::render(self.get_load_table(snapshots), areas[4], buf);
     }
 }
