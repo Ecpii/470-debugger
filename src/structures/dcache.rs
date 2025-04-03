@@ -42,6 +42,56 @@ impl DCache {
         })
     }
 
+    fn get_memdp_ports(&self, snapshots: &Snapshots) -> Line {
+        let read_enable = snapshots
+            .get_var(&format!("{}.read_enable", self.base))
+            .unwrap()
+            .is_high();
+        let read_index = snapshots
+            .get_var(&format!("{}.read_index", self.base))
+            .unwrap()
+            .as_decimal();
+
+        let write_enable = snapshots
+            .get_var(&format!("{}.read_enable", self.base))
+            .unwrap()
+            .is_high();
+        let write_index = snapshots
+            .get_var(&format!("{}.write_index", self.base))
+            .unwrap()
+            .as_decimal();
+        let write_data = snapshots
+            .get_var(&format!("{}.write_data.dbbl_level", self.base))
+            .unwrap()
+            .as_hex();
+
+        let mut parts = vec!["memDP ports: ".blue().bold()];
+
+        if read_enable {
+            parts.push("read at index ".into());
+            parts.push(read_index.magenta());
+        } else {
+            parts.push("read at index ".dim());
+            parts.push(read_index.magenta().dim());
+        }
+
+        parts.push(" | ".bold());
+
+        if write_enable {
+            parts.push("write at index ".into());
+            parts.push(write_index.magenta());
+            parts.push(" with data ".into());
+            parts.push(write_data.magenta());
+        } else {
+            parts.push("write at index ".dim());
+            parts.push(write_index.dim().magenta());
+            parts.push(" with data ".dim());
+            parts.push(write_data.dim().magenta());
+        }
+
+        Line::from(parts)
+    }
+
     fn get_incoming_command(&self, snapshots: &Snapshots) -> Line {
         let command_key = format!("{}.query_command", self.base);
         let command = snapshots.get_var(&command_key).unwrap();
@@ -54,14 +104,22 @@ impl DCache {
         let data_key = format!("{}.query_data.dbbl_level", self.base);
         let data = snapshots.get_var(&data_key).unwrap().as_hex();
 
-        Line::from(vec![
+        let mut parts = vec![
             "Incoming Command: ".blue().bold(),
             command_string.magenta(),
             " at ".into(),
             addr.magenta(),
             " with data ".into(),
             data.magenta(),
-        ])
+        ];
+
+        if command.is_low() || command.is_unknown() {
+            #[allow(clippy::needless_range_loop)]
+            for i in 1..parts.len() {
+                parts[i] = parts[i].clone().dim();
+            }
+        }
+        Line::from(parts)
     }
 
     fn get_mem_command(&self, snapshots: &Snapshots) -> Line {
@@ -76,14 +134,22 @@ impl DCache {
         let data_key = format!("{}.mem_command_data.dbbl_level", self.base);
         let data = snapshots.get_var(&data_key).unwrap().as_hex();
 
-        Line::from(vec![
+        let mut parts = vec![
             "Memory Command: ".blue().bold(),
             command_string.magenta(),
             " at ".into(),
             addr.magenta(),
             " with data ".into(),
             data.magenta(),
-        ])
+        ];
+
+        if command.is_low() || command.is_unknown() {
+            #[allow(clippy::needless_range_loop)]
+            for i in 1..parts.len() {
+                parts[i] = parts[i].clone().dim();
+            }
+        }
+        Line::from(parts)
     }
 
     fn get_table(&self, snapshots: &Snapshots) -> Table {
@@ -152,6 +218,7 @@ impl StatefulWidget for DCache {
         let lines = vec![
             self.get_incoming_command(snapshots),
             self.get_mem_command(snapshots),
+            self.get_memdp_ports(snapshots),
         ];
 
         let [top, rest] =
