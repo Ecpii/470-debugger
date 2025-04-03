@@ -7,7 +7,11 @@ use ratatui::{
     widgets::{Block, Cell, Paragraph, Row, StatefulWidget, Table, Widget},
 };
 
-use crate::{snapshots::Snapshots, trace_dbg, utils::parse_mem_command};
+use crate::{
+    snapshots::Snapshots,
+    trace_dbg,
+    utils::{parse_mem_command, parse_mem_size},
+};
 
 // true if we can use the raw name as the key to index
 const HEADERS: [(&str, bool); 4] = [
@@ -101,12 +105,19 @@ impl DCache {
         let addr_key = format!("{}.query_addr", self.base);
         let addr = snapshots.get_var(&addr_key).unwrap().as_hex();
 
+        let size_key = format!("{}.query_size", self.base);
+        let size = snapshots.get_var(&size_key).unwrap();
+
+        let size_string = parse_mem_size(size);
+
         let data_key = format!("{}.query_data.dbbl_level", self.base);
         let data = snapshots.get_var(&data_key).unwrap().as_hex();
 
         let mut parts = vec![
             "Incoming Command: ".blue().bold(),
             command_string.magenta(),
+            " of size ".into(),
+            size_string.magenta(),
             " at ".into(),
             addr.magenta(),
             " with data ".into(),
