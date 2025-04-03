@@ -9,6 +9,8 @@ use raki::{
     AOpcode, BaseIOpcode, COpcode, InstFormat, Instruction, OpcodeKind, PrivOpcode, ZifenceiOpcode,
 };
 
+use crate::snapshots::VerilogValue;
+
 #[derive(Clone, Copy)]
 pub enum DisplayType {
     Binary,
@@ -287,4 +289,29 @@ impl Display for o3oInst {
 /// Convert register number to string.
 fn reg2str(rd_value: usize) -> String {
     format!("x{rd_value}")
+}
+
+pub fn parse_mem_command(val: &VerilogValue) -> &'static str {
+    if val.is_unknown() {
+        return "xxxxx";
+    }
+    match val.as_usize() {
+        0b00 => "MEM_NONE",
+        0b01 => "MEM_LOAD",
+        0b10 => "MEM_STORE",
+        _ => "<invalid>",
+    }
+}
+
+pub fn parse_mem_size(val: &VerilogValue) -> &'static str {
+    if val.is_unknown() {
+        return "xxxxx";
+    }
+    match val.as_usize() {
+        0b00 => "BYTE",
+        0b01 => "HALF",
+        0b10 => "WORD",
+        0b11 => "DOUBLE",
+        _ => "<invalid>",
+    }
 }

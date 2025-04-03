@@ -4,10 +4,10 @@ use ratatui::{
     layout::{Constraint, Layout},
     style::Stylize,
     text::Line,
-    widgets::{Block, Cell, Row, StatefulWidget, Table, Widget},
+    widgets::{Block, Cell, Paragraph, Row, StatefulWidget, Table, Widget},
 };
 
-use crate::{snapshots::Snapshots, trace_dbg};
+use crate::{snapshots::Snapshots, trace_dbg, utils::parse_mem_command};
 
 // true if we can use the raw name as the key to index
 const HEADERS: [(&str, bool); 4] = [
@@ -42,20 +42,33 @@ impl DCache {
         })
     }
 
+    fn get_incoming_command(&self, snapshots: &Snapshots) -> Line {
+        let command_key = format!("{}.query_command", self.base);
+        let command = snapshots.get_var(&command_key).unwrap();
+
+        let command_string = parse_mem_command(command);
+
+        let addr_key = format!("{}.query_addr", self.base);
+        let addr = snapshots.get_var(&addr_key).unwrap().as_hex();
+
+        let data_key = format!("{}.query_data.dbbl_level", self.base);
+        let data = snapshots.get_var(&data_key).unwrap().as_hex();
+
+        Line::from(vec![
+            "Incoming Command: ".blue().bold(),
+            command_string.magenta(),
+            " at ".into(),
+            addr.magenta(),
+            " with data ".into(),
+            data.magenta(),
+        ])
+    }
+
     fn get_mem_command(&self, snapshots: &Snapshots) -> Line {
         let command_key = format!("{}.mem_command", self.base);
         let command = snapshots.get_var(&command_key).unwrap();
 
-        if command.is_unknown() {
-            return Line::from(vec!["Memory Command: ".blue().bold(), "xxxxx".red()]);
-        }
-
-        let command_string = match command.as_usize() {
-            0b00 => "MEM_NONE",
-            0b01 => "MEM_LOAD",
-            0b10 => "MEM_STORE",
-            _ => "<invalid>",
-        };
+        let command_string = parse_mem_command(command);
 
         let addr_key = format!("{}.mem_addr", self.base);
         let addr = snapshots.get_var(&addr_key).unwrap().as_hex();
@@ -136,9 +149,15 @@ impl StatefulWidget for DCache {
         let inner_area = block.inner(area);
         Widget::render(block, area, buf);
 
+        let lines = vec![
+            self.get_incoming_command(snapshots),
+            self.get_mem_command(snapshots),
+        ];
+
         let [top, rest] =
-            Layout::vertical([Constraint::Length(1), Constraint::Fill(1)]).areas(inner_area);
-        Widget::render(self.get_mem_command(snapshots), top, buf);
+            Layout::vertical([Constraint::Length(lines.len() as u16), Constraint::Fill(1)])
+                .areas(inner_area);
+        Widget::render(Paragraph::new(lines), top, buf);
         Widget::render(self.get_table(snapshots), rest, buf);
     }
 }
