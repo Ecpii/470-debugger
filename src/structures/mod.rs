@@ -2,6 +2,7 @@ use branch_stack::BranchStack;
 use branches::Btb;
 use crossterm::event::{KeyCode, KeyEvent};
 use dcache::DCache;
+use facache::FaCache;
 use issue::Issue;
 use ratatui::buffer::Buffer;
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
@@ -19,6 +20,7 @@ use strum_macros::{Display, EnumCount as EnumCountMacro, EnumIter, FromRepr};
 mod branch_stack;
 mod branches;
 mod dcache;
+mod facache;
 mod issue;
 mod map_table;
 mod regfile;
@@ -69,6 +71,7 @@ pub struct Structures {
     btb: Option<Btb>,
     issue: Option<Issue>,
     dcache: Option<DCache>,
+    facache: Option<FaCache>,
     regfile: Option<RegFile>,
     selected_tab: SelectedTab,
 }
@@ -101,6 +104,7 @@ impl Structures {
         let mut btb = None;
         let mut issue = None;
         let mut dcache = None;
+        let mut facache = None;
         let mut regfile = None;
         let mut is_cpu = false;
 
@@ -146,6 +150,9 @@ impl Structures {
                 if dcache.is_none() {
                     dcache = DCache::new(&new_base, snapshots);
                 }
+                if facache.is_none() {
+                    facache = FaCache::new(&new_base, snapshots);
+                }
                 if regfile.is_none() {
                     regfile = RegFile::new(&new_base, snapshots);
                 }
@@ -160,6 +167,7 @@ impl Structures {
             is_cpu,
             issue,
             dcache,
+            facache,
             regfile,
             selected_tab: SelectedTab::default(),
         }
@@ -237,6 +245,8 @@ impl StatefulWidget for Structures {
                 issue.render(area, buf, state);
             } else if let Some(dcache) = self.dcache {
                 dcache.render(area, buf, state);
+            } else if let Some(facache) = self.facache {
+                facache.render(area, buf, state);
             } else if let Some(regfile) = self.regfile {
                 regfile.render(area, buf, state);
             }

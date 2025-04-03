@@ -4,7 +4,6 @@ use ratatui::{
     buffer::Buffer,
     layout::{Constraint, Layout, Rect},
     style::Stylize,
-    symbols::{self, line::HORIZONTAL_UP},
     text::Line,
     widgets::{Block, Borders, Cell, Row, StatefulWidget, Table, Widget},
 };
