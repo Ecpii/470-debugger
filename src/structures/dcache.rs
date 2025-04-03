@@ -14,7 +14,8 @@ use crate::{
 };
 
 // true if we can use the raw name as the key to index
-const HEADERS: [(&str, bool); 4] = [
+const HEADERS: [(&str, bool); 5] = [
+    ("#", false),
     ("dirty", true),
     ("tag", true),
     ("lru", true),
@@ -44,6 +45,39 @@ impl DCache {
             base: base.to_owned(),
             size,
         })
+    }
+
+    fn get_outputs(&self, snapshots: &Snapshots) -> Line {
+        let valid = snapshots.get_var(&format!("{}.valid", self.base)).unwrap();
+        let ready = snapshots.get_var(&format!("{}.ready", self.base)).unwrap();
+        let data = snapshots
+            .get_var(&format!("{}.data", self.base))
+            .unwrap()
+            .as_hex();
+
+        let mut parts = vec!["Outputs:".blue().bold()];
+
+        if ready.is_low() || ready.is_unknown() {
+            parts.push(" ready: ".dim());
+            parts.push(format!("{ready}").dim());
+        } else {
+            parts.push(" ready: ".into());
+            parts.push(format!("{ready}").into());
+        }
+
+        if valid.is_low() || valid.is_unknown() {
+            parts.push(" valid: ".dim());
+            parts.push(format!("{valid}").dim());
+            parts.push(" data: ".dim());
+            parts.push(data.dim());
+        } else {
+            parts.push(" valid: ".into());
+            parts.push(format!("{valid}").into());
+            parts.push(" data: ".into());
+            parts.push(data.into());
+        }
+
+        Line::from(parts)
     }
 
     fn get_memdp_ports(&self, snapshots: &Snapshots) -> Line {
@@ -189,6 +223,8 @@ impl DCache {
                     let key = format!("{}.dcache_mem.memData[{i}]", self.base);
                     let value = snapshots.get_var(&key).unwrap().as_hex();
                     value
+                } else if *name == "#" {
+                    i.to_string()
                 } else {
                     unreachable!()
                 };
@@ -230,6 +266,7 @@ impl StatefulWidget for DCache {
             self.get_incoming_command(snapshots),
             self.get_mem_command(snapshots),
             self.get_memdp_ports(snapshots),
+            self.get_outputs(snapshots),
         ];
 
         let [top, rest] =
