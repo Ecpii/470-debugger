@@ -1,6 +1,7 @@
 use std::cmp::max;
 
 use ratatui::{
+    layout::{Constraint, Layout},
     style::Stylize,
     text::Line,
     widgets::{Block, Cell, Row, StatefulWidget, Table, Widget},
@@ -40,17 +41,39 @@ impl DCache {
             size,
         })
     }
-}
 
-impl StatefulWidget for DCache {
-    type State = Snapshots;
+    fn get_mem_command(&self, snapshots: &Snapshots) -> Line {
+        let command_key = format!("{}.mem_command", self.base);
+        let command = snapshots.get_var(&command_key).unwrap();
 
-    fn render(
-        self,
-        area: ratatui::prelude::Rect,
-        buf: &mut ratatui::prelude::Buffer,
-        snapshots: &mut Self::State,
-    ) {
+        if command.is_unknown() {
+            return Line::from(vec!["Memory Command: ".blue().bold(), "xxxxx".red()]);
+        }
+
+        let command_string = match command.as_usize() {
+            0b00 => "MEM_NONE",
+            0b01 => "MEM_LOAD",
+            0b10 => "MEM_STORE",
+            _ => "<invalid>",
+        };
+
+        let addr_key = format!("{}.mem_addr", self.base);
+        let addr = snapshots.get_var(&addr_key).unwrap().as_hex();
+
+        let data_key = format!("{}.mem_command_data.dbbl_level", self.base);
+        let data = snapshots.get_var(&data_key).unwrap().as_hex();
+
+        Line::from(vec![
+            "Memory Command: ".blue().bold(),
+            command_string.magenta(),
+            " at ".into(),
+            addr.magenta(),
+            " with data ".into(),
+            data.magenta(),
+        ])
+    }
+
+    fn get_table(&self, snapshots: &Snapshots) -> Table {
         let mut widths: Vec<u16> = HEADERS.iter().map(|(x, _)| x.len() as u16).collect();
         let header = Row::new(HEADERS.map(|(x, _)| x)).bold().on_blue();
 
@@ -95,9 +118,27 @@ impl StatefulWidget for DCache {
             rows.push(row)
         }
 
+        Table::new(rows, widths).header(header)
+    }
+}
+
+impl StatefulWidget for DCache {
+    type State = Snapshots;
+
+    fn render(
+        self,
+        area: ratatui::prelude::Rect,
+        buf: &mut ratatui::prelude::Buffer,
+        snapshots: &mut Self::State,
+    ) {
         let title = Line::from("Data Cache").bold().centered();
         let block = Block::bordered().title(title);
-        let table = Table::new(rows, widths).header(header).block(block);
-        Widget::render(table, area, buf);
+        let inner_area = block.inner(area);
+        Widget::render(block, area, buf);
+
+        let [top, rest] =
+            Layout::vertical([Constraint::Length(1), Constraint::Fill(1)]).areas(inner_area);
+        Widget::render(self.get_mem_command(snapshots), top, buf);
+        Widget::render(self.get_table(snapshots), rest, buf);
     }
 }
