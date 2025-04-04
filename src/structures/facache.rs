@@ -252,7 +252,7 @@ impl StatefulWidget for FaCache {
         buf: &mut ratatui::prelude::Buffer,
         snapshots: &mut Self::State,
     ) {
-        let title = Line::from("Data Cache").bold().centered();
+        let title = Line::from("FA Cache").bold().centered();
         let block = Block::bordered().title(title);
         let inner_area = block.inner(area);
         Widget::render(block, area, buf);

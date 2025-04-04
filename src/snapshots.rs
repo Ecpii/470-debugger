@@ -2,6 +2,7 @@ use im::HashMap;
 use raki::{Decode, Isa};
 use std::fmt::Display;
 use std::io::BufReader;
+use std::ops;
 use std::{fs::File, io};
 use vcd::{self, Header, IdCode, Scope, ScopeItem, Value, Vector};
 
@@ -115,6 +116,33 @@ impl VerilogValue {
         match self {
             VerilogValue::Scalar(value) => matches!(value, Value::X | Value::Z),
             VerilogValue::Vector(vector) => vector.iter().any(|x| matches!(x, Value::X | Value::Z)),
+        }
+    }
+}
+
+impl ops::Add<&VerilogValue> for &VerilogValue {
+    type Output = VerilogValue;
+
+    fn add(self, rhs: &VerilogValue) -> Self::Output {
+        match (self, rhs) {
+            (VerilogValue::Scalar(value1), VerilogValue::Scalar(value2)) => {
+                VerilogValue::Vector(Vector::from([*value1, *value2]))
+            }
+            (VerilogValue::Scalar(value), VerilogValue::Vector(vector)) => {
+                let mut values = vec![*value];
+                values.extend(vector.iter());
+                VerilogValue::Vector(Vector::from(values))
+            }
+            (VerilogValue::Vector(vector), VerilogValue::Scalar(value)) => {
+                let mut values: Vec<Value> = vector.iter().collect();
+                values.push(*value);
+                VerilogValue::Vector(Vector::from(values))
+            }
+            (VerilogValue::Vector(vector1), VerilogValue::Vector(vector2)) => {
+                let mut values: Vec<Value> = vector1.iter().collect();
+                values.extend(vector2.iter());
+                VerilogValue::Vector(Vector::from(values))
+            }
         }
     }
 }
