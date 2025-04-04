@@ -22,10 +22,20 @@ const HEADERS: [(&str, bool); 5] = [
     ("data", false),
 ];
 
+const MSHR_HEADERS: [(&str, bool); 6] = [
+    ("#", false),
+    ("mem_tag", true),
+    ("addr", false),
+    ("size", true),
+    ("is_store", true),
+    ("store_data", true),
+];
+
 #[derive(Clone, Debug)]
 pub struct FaCache {
     base: String,
     pub size: usize,
+    num_mshrs: usize,
 }
 
 impl FaCache {
@@ -41,8 +51,17 @@ impl FaCache {
             entry_name = format!("{base}.metadata[{size}]");
         }
 
+        let mut num_mshrs = 0;
+        let mut entry_name = format!("{base}.waiting_commands[{num_mshrs}]");
+
+        while snapshots.get_scope(&entry_name).is_some() {
+            num_mshrs += 1;
+            entry_name = format!("{base}.waiting_commands[{num_mshrs}]");
+        }
+
         Some(Self {
             base: base.to_owned(),
+            num_mshrs,
             size,
         })
     }
@@ -192,6 +211,69 @@ impl FaCache {
         Line::from(parts)
     }
 
+    fn get_mshr_table(&self, snapshots: &Snapshots) -> Table {
+        let mut widths: Vec<u16> = MSHR_HEADERS.iter().map(|(x, _)| x.len() as u16).collect();
+        let header = Row::new(MSHR_HEADERS.map(|(x, _)| x)).bold().on_blue();
+
+        let mut rows = Vec::new();
+
+        for i in 0..self.num_mshrs {
+            let mut row_cells: Vec<Cell> = vec![];
+            let row_base = format!("{}.waiting_commands[{i}]", self.base);
+            let is_valid = snapshots
+                .get_var(&format!("{row_base}.valid"))
+                .unwrap()
+                .is_high();
+
+            for (j, (name, is_key)) in MSHR_HEADERS.iter().enumerate() {
+                let string = if *is_key {
+                    let full_key = format!("{row_base}.{name}");
+                    trace_dbg!(&full_key);
+                    let value = snapshots.get_var(&full_key).unwrap();
+
+                    // string that gets displayed in the cell section
+                    match *name {
+                        "mem_tag" => value.as_decimal(),
+                        "store_data" => value.as_hex(),
+                        "size" => parse_mem_size(value).to_string(),
+                        _ => format!("{}", value),
+                    }
+                } else if *name == "#" {
+                    i.to_string()
+                } else if *name == "addr" {
+                    let tag = snapshots.get_var(&format!("{row_base}.addr.tag")).unwrap();
+                    let block_num = snapshots
+                        .get_var(&format!("{row_base}.addr.block_num"))
+                        .unwrap();
+                    let offset = snapshots
+                        .get_var(&format!("{row_base}.addr.block_offset"))
+                        .unwrap();
+
+                    let addr = &(tag + block_num) + offset;
+
+                    addr.as_hex()
+                } else {
+                    unreachable!()
+                };
+
+                let width = string.len();
+                widths[j] = max(widths[j], width as u16);
+                row_cells.push(Cell::new(string));
+            }
+
+            let mut row = Row::new(row_cells);
+
+            // formatting, colors
+            if !is_valid {
+                row = row.dim();
+            }
+
+            rows.push(row)
+        }
+
+        Table::new(rows, widths).header(header)
+    }
+
     fn get_table(&self, snapshots: &Snapshots) -> Table {
         let mut widths: Vec<u16> = HEADERS.iter().map(|(x, _)| x.len() as u16).collect();
         let header = Row::new(HEADERS.map(|(x, _)| x)).bold().on_blue();
@@ -264,10 +346,21 @@ impl StatefulWidget for FaCache {
             self.get_outputs(snapshots),
         ];
 
+        let metadata_table = self
+            .get_table(snapshots)
+            .block(Block::bordered().title(Line::from("Metadata").bold().centered()));
+        let mshr_table = self
+            .get_mshr_table(snapshots)
+            .block(Block::bordered().title(Line::from("MSHRs").bold().centered()));
+
         let [top, rest] =
             Layout::vertical([Constraint::Length(lines.len() as u16), Constraint::Fill(1)])
                 .areas(inner_area);
         Widget::render(Paragraph::new(lines), top, buf);
-        Widget::render(self.get_table(snapshots), rest, buf);
+
+        let [left, right] =
+            Layout::horizontal([Constraint::Fill(1), Constraint::Fill(1)]).areas(rest);
+        Widget::render(metadata_table, left, buf);
+        Widget::render(mshr_table, right, buf);
     }
 }
