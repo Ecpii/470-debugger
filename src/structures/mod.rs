@@ -36,6 +36,8 @@ enum SelectedTab {
     BStack,
     #[strum(to_string = "Issue/FUs")]
     IssueFUs,
+    #[strum(to_string = "Caches")]
+    Caches,
 }
 
 impl SelectedTab {
@@ -128,6 +130,7 @@ impl Structures {
                 btb = Btb::new(&format!("{new_base}.btb"), snapshots);
                 issue = Issue::new(&format!("{new_base}.issue_module"), snapshots);
                 regfile = RegFile::new(&format!("{new_base}.regfile_module"), snapshots);
+                dcache = DCache::new(&format!("{new_base}.dcache_module"), snapshots);
 
                 break;
             } else {
@@ -229,6 +232,9 @@ impl StatefulWidget for Structures {
                 SelectedTab::IssueFUs => {
                     self.issue.unwrap().render(inner_area, buf, state);
                     // let areas = split_rectangle_horizontal(inner_area);
+                }
+                SelectedTab::Caches => {
+                    self.dcache.unwrap().render(inner_area, buf, state);
                 }
             }
         } else {
