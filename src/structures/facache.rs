@@ -242,14 +242,14 @@ impl FaCache {
                     i.to_string()
                 } else if *name == "addr" {
                     let tag = snapshots.get_var(&format!("{row_base}.addr.tag")).unwrap();
-                    let block_num = snapshots
-                        .get_var(&format!("{row_base}.addr.block_num"))
-                        .unwrap();
+                    // let block_num = snapshots
+                        // .get_var(&format!("{row_base}.addr.block_num"))
+                        // .unwrap();
                     let offset = snapshots
                         .get_var(&format!("{row_base}.addr.block_offset"))
                         .unwrap();
 
-                    let addr = &(tag + block_num) + offset;
+                    let addr = tag + offset;
 
                     addr.as_hex()
                 } else {
