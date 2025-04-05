@@ -22,9 +22,10 @@ const HEADERS: [(&str, bool); 5] = [
     ("data", false),
 ];
 
-const MSHR_HEADERS: [(&str, bool); 6] = [
+const MSHR_HEADERS: [(&str, bool); 7] = [
     ("#", false),
     ("mem_tag", true),
+    ("bmask", true),
     ("addr", false),
     ("size", true),
     ("is_store", true),

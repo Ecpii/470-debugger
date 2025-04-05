@@ -4,6 +4,7 @@ use crossterm::event::{KeyCode, KeyEvent};
 use dcache::DCache;
 use facache::FaCache;
 use issue::Issue;
+use memunit::MemUnit;
 use ratatui::buffer::Buffer;
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::style::{Color, Style};
@@ -24,6 +25,7 @@ mod dcache;
 mod facache;
 mod issue;
 mod map_table;
+mod memunit;
 mod regfile;
 mod rob;
 mod rs;
@@ -78,6 +80,7 @@ pub struct Structures {
     facache: Option<FaCache>,
     regfile: Option<RegFile>,
     store_queue: Option<StoreQueue>,
+    memunit: Option<MemUnit>,
     selected_tab: SelectedTab,
 }
 
@@ -112,6 +115,7 @@ impl Structures {
         let mut facache = None;
         let mut regfile = None;
         let mut store_queue = None;
+        let mut memunit = None;
         let mut is_cpu = false;
 
         let base = snapshots.get_base();
@@ -136,6 +140,7 @@ impl Structures {
                 regfile = RegFile::new(&format!("{new_base}.regfile_module"), snapshots);
                 dcache = DCache::new(&format!("{new_base}.dcache_module"), snapshots);
                 store_queue = StoreQueue::new(&format!("{new_base}.store_queue_module"), snapshots);
+                memunit = MemUnit::new(&format!("{new_base}.memunit_module"), snapshots);
 
                 break;
             } else {
@@ -167,6 +172,9 @@ impl Structures {
                 if store_queue.is_none() {
                     store_queue = StoreQueue::new(&new_base, snapshots);
                 }
+                if memunit.is_none() {
+                    memunit = MemUnit::new(&new_base, snapshots);
+                }
             }
         }
 
@@ -181,6 +189,7 @@ impl Structures {
             facache,
             regfile,
             store_queue,
+            memunit,
             selected_tab: SelectedTab::default(),
         }
     }
@@ -239,8 +248,9 @@ impl StatefulWidget for Structures {
                     }
                 }
                 SelectedTab::IssueFUs => {
-                    self.issue.unwrap().render(inner_area, buf, state);
-                    // let areas = split_rectangle_horizontal(inner_area);
+                    let areas = split_rectangle_horizontal(inner_area);
+                    self.issue.unwrap().render(areas[0], buf, state);
+                    self.memunit.unwrap().render(areas[1], buf, state);
                 }
                 SelectedTab::Caches => {
                     let areas = split_rectangle_horizontal(inner_area);
@@ -266,6 +276,8 @@ impl StatefulWidget for Structures {
                 facache.render(area, buf, state);
             } else if let Some(regfile) = self.regfile {
                 regfile.render(area, buf, state);
+            } else if let Some(memunit) = self.memunit {
+                memunit.render(area, buf, state);
             } else if let Some(store_queue) = self.store_queue {
                 store_queue.render(area, buf, state);
             }
