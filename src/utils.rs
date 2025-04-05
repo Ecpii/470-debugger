@@ -315,3 +315,15 @@ pub fn parse_mem_size(val: &VerilogValue) -> &'static str {
         _ => "<invalid>",
     }
 }
+
+pub fn parse_mem_state(val: &VerilogValue) -> &'static str {
+    if val.is_unknown() {
+        return "xxxxx";
+    }
+    match val.as_usize() {
+        0b00 => "IDLE",
+        0b01 => "LOAD_PENDING",
+        0b10 => "STORE_PENDING",
+        _ => "<invalid>",
+    }
+}

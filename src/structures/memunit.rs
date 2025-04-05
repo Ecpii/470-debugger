@@ -10,7 +10,7 @@ use ratatui::{
 use crate::{
     snapshots::Snapshots,
     trace_dbg,
-    utils::{parse_mem_command, parse_mem_size},
+    utils::{parse_mem_command, parse_mem_size, parse_mem_state},
 };
 
 #[derive(Clone, Debug)]
@@ -42,6 +42,28 @@ impl MemUnit {
         Some(Self {
             base: base.to_owned(),
         })
+    }
+
+    fn get_state(&self, snapshots: &Snapshots) -> Line {
+        let state = parse_mem_state(
+            snapshots
+                .get_var(&format!("{}.mem_state", self.base))
+                .unwrap(),
+        );
+        let next_state = parse_mem_state(
+            snapshots
+                .get_var(&format!("{}.next_mem_state", self.base))
+                .unwrap(),
+        );
+
+        let parts = vec![
+            "State: ".blue().bold(),
+            state.magenta(),
+            " -> ".into(),
+            next_state.magenta().dim(),
+        ];
+
+        Line::from(parts)
     }
 
     fn get_outputs(&self, snapshots: &Snapshots) -> Line {
@@ -130,6 +152,7 @@ impl StatefulWidget for MemUnit {
         Widget::render(block, area, buf);
 
         let lines = vec![
+            self.get_state(snapshots),
             self.get_cache_command(snapshots),
             // self.get_outputs(snapshots),
         ];
