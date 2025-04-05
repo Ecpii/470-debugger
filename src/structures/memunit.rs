@@ -135,6 +135,33 @@ impl MemUnit {
         }
         Line::from(parts)
     }
+
+    fn get_cache_response(&self, snapshots: &Snapshots) -> Line {
+        let data = snapshots
+            .get_var(&format!("{}.cache_resp_data", self.base))
+            .unwrap()
+            .as_hex();
+        let valid = snapshots
+            .get_var(&format!("{}.cache_resp_valid", self.base))
+            .unwrap()
+            .is_high();
+        let ready = snapshots
+            .get_var(&format!("{}.cache_query_ready", self.base))
+            .unwrap();
+
+        let parts = vec![
+            "Cache Response: ".blue().bold(),
+            if valid {
+                data.magenta()
+            } else {
+                data.magenta().dim()
+            },
+            ", ready: ".into(),
+            format!("{}", ready).magenta(),
+        ];
+
+        Line::from(parts)
+    }
 }
 
 impl StatefulWidget for MemUnit {
@@ -154,6 +181,7 @@ impl StatefulWidget for MemUnit {
         let lines = vec![
             self.get_state(snapshots),
             self.get_cache_command(snapshots),
+            self.get_cache_response(snapshots),
             // self.get_outputs(snapshots),
         ];
 
