@@ -27,6 +27,7 @@ impl VerilogValue {
             DisplayType::Binary => format!("{}", self),
             DisplayType::Decimal => self.as_decimal(),
             DisplayType::Hex => self.as_hex(),
+            DisplayType::Custom => panic!("trying to format custom display type"),
         }
     }
 

@@ -8,14 +8,23 @@ use std::{
 use raki::{
     AOpcode, BaseIOpcode, COpcode, InstFormat, Instruction, OpcodeKind, PrivOpcode, ZifenceiOpcode,
 };
+use ratatui::{
+    style::Stylize,
+    symbols,
+    widgets::{Cell, Row, Table},
+};
 
-use crate::snapshots::VerilogValue;
+use crate::{
+    snapshots::{Snapshots, VerilogValue},
+    trace_dbg,
+};
 
 #[derive(Clone, Copy)]
 pub enum DisplayType {
     Binary,
     Decimal,
     Hex,
+    Custom,
 }
 impl DisplayType {
     pub fn next(&self) -> Self {
@@ -23,6 +32,9 @@ impl DisplayType {
             DisplayType::Binary => DisplayType::Decimal,
             DisplayType::Decimal => DisplayType::Hex,
             DisplayType::Hex => DisplayType::Binary,
+            DisplayType::Custom => {
+                panic!("Shouldn't be able to transition to/from Custom DisplayType")
+            }
         }
     }
 }
@@ -35,6 +47,8 @@ impl Display for DisplayType {
                 DisplayType::Binary => "Binary",
                 DisplayType::Decimal => "Decimal",
                 DisplayType::Hex => "Hex",
+                DisplayType::Custom =>
+                    panic!("Shouldn't be able to transition to/from Custom DisplayType"),
             }
         )
     }
@@ -326,4 +340,252 @@ pub fn parse_mem_state(val: &VerilogValue) -> &'static str {
         0b10 => "STORE_PENDING",
         _ => "<invalid>",
     }
+}
+
+struct Column {
+    name: &'static str,
+    key: Option<&'static str>,
+    width: u16,
+    display_type: DisplayType,
+}
+
+/*
+ logic valid;
+ op_info_t op;
+ bmask_t bmask;
+ reg_idx_t rd;
+ rob_num_t rob_num;
+ store_queue_num_t store_queue_tag;
+ logic [3:0] mem_blocks;
+ DATA alu_result;
+ DATA mem_data;
+*/
+const FU_OUTPUT_HEADERS: [Column; 8] = [
+    Column {
+        name: "rd",
+        key: Some("rd"),
+        width: 2,
+        display_type: DisplayType::Decimal,
+    },
+    Column {
+        name: "bmask",
+        key: Some("bmask"),
+        width: 7,
+        display_type: DisplayType::Binary,
+    },
+    Column {
+        name: "rob_num",
+        key: Some("rob_num"),
+        width: 7,
+        display_type: DisplayType::Decimal,
+    },
+    Column {
+        name: "sq_tag",
+        key: Some("store_queue_tag"),
+        width: 7,
+        display_type: DisplayType::Decimal,
+    },
+    Column {
+        name: "mem_blocks",
+        key: Some("mem_blocks"),
+        width: 10,
+        display_type: DisplayType::Binary,
+    },
+    Column {
+        name: "alu_result",
+        key: Some("alu_result"),
+        width: 16,
+        display_type: DisplayType::Hex,
+    },
+    Column {
+        name: "mem_data",
+        key: Some("mem_data"),
+        width: 16,
+        display_type: DisplayType::Hex,
+    },
+    Column {
+        name: "op",
+        key: None,
+        width: 20,
+        display_type: DisplayType::Custom,
+    },
+];
+
+pub fn parse_fu_output_packets<'a>(bases: &[&str], snapshots: &'a Snapshots) -> Table<'a> {
+    let header = Row::new(FU_OUTPUT_HEADERS.map(|col| col.name))
+        .bold()
+        .on_blue();
+    let widths = FU_OUTPUT_HEADERS.map(|col| col.width);
+
+    let rows = bases
+        .iter()
+        .map(|base| parse_fu_output_packet(base, snapshots));
+
+    Table::new(rows, widths).header(header)
+}
+
+pub fn parse_fu_output_packet<'a>(base: &str, snapshots: &'a Snapshots) -> Row<'a> {
+    let mut cells = Vec::<Cell>::new();
+
+    let is_valid = snapshots
+        .get_var(&format!("{base}.valid"))
+        .unwrap()
+        .is_high();
+
+    for col in FU_OUTPUT_HEADERS.iter() {
+        if let Some(key) = col.key {
+            let value = snapshots.get_var(&format!("{base}.{key}")).unwrap();
+
+            let string = match col.display_type {
+                DisplayType::Custom => {
+                    unreachable!("No keyed columns have custom display type!")
+                }
+                display_type => value.format(&display_type),
+            };
+
+            cells.push(Cell::new(string));
+        } else {
+            assert!(col.name == "op");
+
+            let string = snapshots.render_opinfo(&format!("{base}.op"));
+
+            cells.push(Cell::new(string));
+        }
+    }
+    let mut row = Row::new(cells);
+
+    // formatting, colors
+    if !is_valid {
+        row = row.dim();
+    }
+
+    row
+}
+
+pub const TOP_BORDER_SET: symbols::border::Set = symbols::border::Set {
+    top_left: symbols::line::NORMAL.vertical_right,
+    top_right: symbols::line::NORMAL.vertical_left,
+    ..symbols::border::PLAIN
+};
+
+/*
+ DATA data;
+ ADDR addr;
+ op_info_t op;
+ rob_num_t rob_num;
+ bmask_t bmask;
+ reg_idx_t rd;
+ logic wr;
+ logic valid;
+ logic [3:0] mem_blocks;
+ store_queue_num_t store_queue_tag;
+*/
+const MEM_INPUT_HEADERS: [Column; 9] = [
+    Column {
+        name: "rd",
+        key: Some("rd"),
+        width: 2,
+        display_type: DisplayType::Decimal,
+    },
+    Column {
+        name: "rob_num",
+        key: Some("rob_num"),
+        width: 7,
+        display_type: DisplayType::Decimal,
+    },
+    Column {
+        name: "wr",
+        key: Some("wr"),
+        width: 2,
+        display_type: DisplayType::Binary,
+    },
+    Column {
+        name: "bmask",
+        key: Some("bmask"),
+        width: 7,
+        display_type: DisplayType::Binary,
+    },
+    Column {
+        name: "data",
+        key: Some("data"),
+        width: 16,
+        display_type: DisplayType::Hex,
+    },
+    Column {
+        name: "addr",
+        key: Some("addr"),
+        width: 8,
+        display_type: DisplayType::Hex,
+    },
+    Column {
+        name: "sq_tag",
+        key: Some("store_queue_tag"),
+        width: 7,
+        display_type: DisplayType::Decimal,
+    },
+    Column {
+        name: "mem_blocks",
+        key: Some("mem_blocks"),
+        width: 10,
+        display_type: DisplayType::Binary,
+    },
+    Column {
+        name: "op",
+        key: None,
+        width: 20,
+        display_type: DisplayType::Custom,
+    },
+];
+
+pub fn parse_mem_input_packets<'a>(bases: &[&str], snapshots: &'a Snapshots) -> Table<'a> {
+    let header = Row::new(MEM_INPUT_HEADERS.map(|col| col.name))
+        .bold()
+        .on_blue();
+    let widths = MEM_INPUT_HEADERS.map(|col| col.width);
+
+    let rows = bases
+        .iter()
+        .map(|base| parse_mem_input_packet(base, snapshots));
+
+    Table::new(rows, widths).header(header)
+}
+
+pub fn parse_mem_input_packet<'a>(base: &str, snapshots: &'a Snapshots) -> Row<'a> {
+    let mut cells = Vec::<Cell>::new();
+
+    let is_valid = snapshots
+        .get_var(&format!("{base}.valid"))
+        .unwrap()
+        .is_high();
+    trace_dbg!(base);
+
+    for col in MEM_INPUT_HEADERS.iter() {
+        if let Some(key) = col.key {
+            trace_dbg!(key);
+            let value = snapshots.get_var(&format!("{base}.{key}")).unwrap();
+
+            let string = match col.display_type {
+                DisplayType::Custom => {
+                    unreachable!("No keyed columns have custom display type!")
+                }
+                display_type => value.format(&display_type),
+            };
+
+            cells.push(Cell::new(string));
+        } else {
+            assert!(col.name == "op");
+
+            let string = snapshots.render_opinfo(&format!("{base}.op"));
+
+            cells.push(Cell::new(string));
+        }
+    }
+    let mut row = Row::new(cells);
+
+    // formatting, colors
+    if !is_valid {
+        row = row.dim();
+    }
+
+    row
 }

@@ -1,16 +1,16 @@
-use std::cmp::max;
-
 use ratatui::{
-    layout::{Constraint, Layout},
+    layout::{Constraint, Layout, Rect},
     style::Stylize,
     text::Line,
-    widgets::{Block, Cell, Paragraph, Row, StatefulWidget, Table, Widget},
+    widgets::{Block, Borders, Paragraph, StatefulWidget, Widget},
 };
 
 use crate::{
     snapshots::Snapshots,
-    trace_dbg,
-    utils::{parse_mem_command, parse_mem_size, parse_mem_state},
+    utils::{
+        parse_fu_output_packets, parse_mem_command, parse_mem_input_packets, parse_mem_size,
+        parse_mem_state, TOP_BORDER_SET,
+    },
 };
 
 #[derive(Clone, Debug)]
@@ -62,39 +62,6 @@ impl MemUnit {
             " -> ".into(),
             next_state.magenta().dim(),
         ];
-
-        Line::from(parts)
-    }
-
-    fn get_outputs(&self, snapshots: &Snapshots) -> Line {
-        let valid = snapshots.get_var(&format!("{}.valid", self.base)).unwrap();
-        let ready = snapshots.get_var(&format!("{}.ready", self.base)).unwrap();
-        let data = snapshots
-            .get_var(&format!("{}.data", self.base))
-            .unwrap()
-            .as_hex();
-
-        let mut parts = vec!["Outputs:".blue().bold()];
-
-        if ready.is_low() || ready.is_unknown() {
-            parts.push(" ready: ".dim());
-            parts.push(format!("{ready}").dim());
-        } else {
-            parts.push(" ready: ".into());
-            parts.push(format!("{ready}").into());
-        }
-
-        if valid.is_low() || valid.is_unknown() {
-            parts.push(" valid: ".dim());
-            parts.push(format!("{valid}").dim());
-            parts.push(" data: ".dim());
-            parts.push(data.dim());
-        } else {
-            parts.push(" valid: ".into());
-            parts.push(format!("{valid}").into());
-            parts.push(" data: ".into());
-            parts.push(data.into());
-        }
 
         Line::from(parts)
     }
@@ -185,6 +152,48 @@ impl StatefulWidget for MemUnit {
             // self.get_outputs(snapshots),
         ];
 
-        Widget::render(Paragraph::new(lines), inner_area, buf);
+        let stored_packet =
+            parse_mem_input_packets(&[&format!("{}.stored_packet", self.base)], snapshots).block(
+                Block::new()
+                    .borders(Borders::TOP | Borders::LEFT | Borders::RIGHT)
+                    .title("stored_packet"),
+            );
+        let next_stored_packet =
+            parse_mem_input_packets(&[&format!("{}.next_stored_packet", self.base)], snapshots)
+                .block(
+                    Block::new()
+                        .borders(Borders::TOP | Borders::LEFT | Borders::RIGHT)
+                        .border_set(TOP_BORDER_SET)
+                        .title("next_stored_packet"),
+                );
+        let output_packet =
+            parse_fu_output_packets(&[&format!("{}.output_packet", self.base)], snapshots).block(
+                Block::new()
+                    .borders(Borders::TOP | Borders::LEFT | Borders::RIGHT)
+                    .border_set(TOP_BORDER_SET)
+                    .title("output_packet"),
+            );
+        let next_output_packet =
+            parse_fu_output_packets(&[&format!("{}.next_output_packet", self.base)], snapshots)
+                .block(
+                    Block::bordered()
+                        .border_set(TOP_BORDER_SET)
+                        .title("next_output_packet"),
+                );
+
+        let areas: [Rect; 5] = Layout::vertical([
+            Constraint::Length(lines.len() as u16),
+            Constraint::Length(3),
+            Constraint::Length(3),
+            Constraint::Length(3),
+            Constraint::Length(4),
+        ])
+        .areas(inner_area);
+
+        Widget::render(Paragraph::new(lines), areas[0], buf);
+        Widget::render(stored_packet, areas[1], buf);
+        Widget::render(next_stored_packet, areas[2], buf);
+        Widget::render(output_packet, areas[3], buf);
+        Widget::render(next_output_packet, areas[4], buf);
     }
 }

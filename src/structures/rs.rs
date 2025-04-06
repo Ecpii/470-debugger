@@ -12,7 +12,7 @@ use crate::{
 };
 
 // true if we can use the raw name as the key to index
-const HEADERS: [(&str, bool); 8] = [
+const HEADERS: [(&str, bool); 10] = [
     ("#", false),
     ("dest_tag", true),
     ("rs1_tag", true),
@@ -20,6 +20,8 @@ const HEADERS: [(&str, bool); 8] = [
     ("bmask", true),
     ("fu", true),
     ("rob_num", true),
+    ("store_queue_tag", true),
+    ("mem_blocks", true),
     ("op", false),
 ];
 const FU_TYPES: [&str; 6] = ["NOP", "IALU", "LD", "STR", "MULT", "BRANCH"];
@@ -107,7 +109,7 @@ impl StatefulWidget for RSTable {
 
                             value.as_decimal() + if plus { "+" } else { "" }
                         }
-                        "dest_tag" | "rob_num" => value.as_decimal(),
+                        "dest_tag" | "rob_num" | "store_queue_tag" => value.as_decimal(),
                         "fu" => self.format_fu(value),
                         _ => {
                             format!("{}", value)

@@ -6,7 +6,7 @@ use ratatui::{
     widgets::{Block, Borders, Cell, Row, StatefulWidget, Table, Widget},
 };
 
-use crate::{snapshots::Snapshots, trace_dbg};
+use crate::{snapshots::Snapshots, trace_dbg, utils::TOP_BORDER_SET};
 
 // true if we can use the raw name as the key to index
 const HEADERS: [(&str, bool); 8] = [
@@ -29,12 +29,6 @@ pub struct Issue {
     num_branches: usize,
     num_stores: usize,
 }
-
-const TOP_BORDER_SET: symbols::border::Set = symbols::border::Set {
-    top_left: symbols::line::NORMAL.vertical_right,
-    top_right: symbols::line::NORMAL.vertical_left,
-    ..symbols::border::PLAIN
-};
 
 impl Issue {
     pub fn new(base: &str, snapshots: &Snapshots) -> Option<Self> {
