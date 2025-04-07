@@ -8,7 +8,7 @@ use ratatui::{
 };
 
 use crate::{
-    snapshots::Snapshots,
+    snapshots::{Snapshots, VerilogValue},
     trace_dbg,
     utils::{parse_mem_command, parse_mem_size},
 };
@@ -18,7 +18,8 @@ const HEADERS: [(&str, bool); 5] = [
     ("#", false),
     ("dirty", true),
     ("tag", true),
-    ("lru", true),
+    ("addr", false),
+    // ("lru", true),
     ("data", false),
 ];
 
@@ -300,16 +301,30 @@ impl DCache {
                     trace_dbg!(&full_key);
                     let value = snapshots.get_var(&full_key).unwrap();
 
-                    // string that gets displayed in the cell section
-                    format!("{}", value)
-                } else if *name == "data" {
-                    let key = format!("{}.dcache_mem.memData[{i}]", self.base);
-                    let value = snapshots.get_var(&key).unwrap().as_hex();
-                    value
-                } else if *name == "#" {
-                    i.to_string()
+                    if *name == "tag" {
+                        value.as_hex()
+                    } else {
+                        format!("{}", value)
+                    }
                 } else {
-                    unreachable!()
+                    match *name {
+                        "data" => {
+                            let key = format!("{}.dcache_mem.memData[{i}]", self.base);
+                            let value = snapshots.get_var(&key).unwrap().as_hex();
+                            value
+                        }
+                        "addr" => {
+                            let tag = snapshots.get_var(&format!("{row_base}.tag")).unwrap();
+                            let block_num = VerilogValue::from_usize(i, self.size.ilog2() as usize);
+                            let block_offset = VerilogValue::from_usize(0, 3);
+
+                            let addr = tag + &(&block_num + &block_offset);
+
+                            addr.as_hex()
+                        }
+                        "#" => i.to_string(),
+                        _ => unreachable!(),
+                    }
                 };
 
                 let width = string.len();

@@ -119,6 +119,30 @@ impl VerilogValue {
             VerilogValue::Vector(vector) => vector.iter().any(|x| matches!(x, Value::X | Value::Z)),
         }
     }
+
+    pub fn from_usize(value: usize, size: usize) -> Self {
+        if size == 1 {
+            match value & 1 {
+                0 => VerilogValue::Scalar(Value::V0),
+                1 => VerilogValue::Scalar(Value::V1),
+                _ => unreachable!(),
+            }
+        } else {
+            let mut value = value;
+            let mut bits = Vec::with_capacity(size);
+            for _ in 0..size {
+                if value & 1 == 0 {
+                    bits.push(Value::V0)
+                } else {
+                    bits.push(Value::V1)
+                }
+
+                value >>= 1;
+            }
+            bits.reverse();
+            VerilogValue::Vector(Vector::from(bits))
+        }
+    }
 }
 
 impl ops::Add<&VerilogValue> for &VerilogValue {
