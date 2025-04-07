@@ -6,7 +6,8 @@ use std::{
 };
 
 use raki::{
-    AOpcode, BaseIOpcode, COpcode, InstFormat, Instruction, OpcodeKind, PrivOpcode, ZifenceiOpcode,
+    AOpcode, BaseIOpcode, COpcode, Decode, InstFormat, Instruction, Isa, OpcodeKind, PrivOpcode,
+    ZifenceiOpcode,
 };
 use ratatui::{
     style::Stylize,
@@ -303,6 +304,18 @@ impl Display for o3oInst {
 /// Convert register number to string.
 fn reg2str(rd_value: usize) -> String {
     format!("x{rd_value}")
+}
+
+pub fn parse_inst(base: &str, snapshots: &Snapshots) -> String {
+    let inst_bits = snapshots
+        .get_var(&format!("{base}.inst"))
+        .unwrap()
+        .as_usize();
+    let Ok(inst) = (inst_bits as u32).decode(Isa::Rv32) else {
+        return String::from("<invalid>");
+    };
+    let inst = o3oInst(inst);
+    format!("{inst}")
 }
 
 pub fn parse_mem_command(val: &VerilogValue) -> &'static str {

@@ -2,7 +2,8 @@ use branch_stack::BranchStack;
 use branches::Btb;
 use crossterm::event::{KeyCode, KeyEvent};
 use dcache::DCache;
-use facache::FaCache;
+use fetch::Fetch;
+use icache::ICache;
 use issue::Issue;
 use memunit::MemUnit;
 use ratatui::buffer::Buffer;
@@ -22,7 +23,8 @@ use strum_macros::{Display, EnumCount as EnumCountMacro, EnumIter, FromRepr};
 mod branch_stack;
 mod branches;
 mod dcache;
-mod facache;
+mod fetch;
+mod icache;
 mod issue;
 mod map_table;
 mod memunit;
@@ -33,6 +35,8 @@ mod store_queue;
 
 #[derive(Default, Clone, Copy, Display, FromRepr, EnumIter, EnumCountMacro)]
 enum SelectedTab {
+    #[strum(to_string = "Fetch")]
+    Fetch,
     #[default]
     #[strum(to_string = "RS/ROB")]
     RsRob,
@@ -40,8 +44,8 @@ enum SelectedTab {
     BStack,
     #[strum(to_string = "Issue/FUs")]
     IssueFUs,
-    #[strum(to_string = "Caches")]
-    Caches,
+    #[strum(to_string = "Memory")]
+    Memory,
 }
 
 impl SelectedTab {
@@ -77,7 +81,8 @@ pub struct Structures {
     btb: Option<Btb>,
     issue: Option<Issue>,
     dcache: Option<DCache>,
-    facache: Option<FaCache>,
+    icache: Option<ICache>,
+    fetch: Option<Fetch>,
     regfile: Option<RegFile>,
     store_queue: Option<StoreQueue>,
     memunit: Option<MemUnit>,
@@ -112,7 +117,8 @@ impl Structures {
         let mut btb = None;
         let mut issue = None;
         let mut dcache = None;
-        let mut facache = None;
+        let mut fetch = None;
+        let mut icache = None;
         let mut regfile = None;
         let mut store_queue = None;
         let mut memunit = None;
@@ -139,6 +145,8 @@ impl Structures {
                 issue = Issue::new(&format!("{new_base}.issue_module"), snapshots);
                 regfile = RegFile::new(&format!("{new_base}.regfile_module"), snapshots);
                 dcache = DCache::new(&format!("{new_base}.dcache_module"), snapshots);
+                icache = ICache::new(&format!("{new_base}.fetch_module.icache_module"), snapshots);
+                fetch = Fetch::new(&format!("{new_base}.fetch_module"), snapshots);
                 store_queue = StoreQueue::new(&format!("{new_base}.store_queue_module"), snapshots);
                 memunit = MemUnit::new(&format!("{new_base}.memunit_module"), snapshots);
 
@@ -163,8 +171,11 @@ impl Structures {
                 if dcache.is_none() {
                     dcache = DCache::new(&new_base, snapshots);
                 }
-                if facache.is_none() {
-                    facache = FaCache::new(&new_base, snapshots);
+                if icache.is_none() {
+                    icache = ICache::new(&new_base, snapshots);
+                }
+                if fetch.is_none() {
+                    fetch = Fetch::new(&new_base, snapshots);
                 }
                 if regfile.is_none() {
                     regfile = RegFile::new(&new_base, snapshots);
@@ -186,7 +197,8 @@ impl Structures {
             is_cpu,
             issue,
             dcache,
-            facache,
+            icache,
+            fetch,
             regfile,
             store_queue,
             memunit,
@@ -252,10 +264,16 @@ impl StatefulWidget for Structures {
                     self.issue.unwrap().render(areas[0], buf, state);
                     self.memunit.unwrap().render(areas[1], buf, state);
                 }
-                SelectedTab::Caches => {
+                SelectedTab::Memory => {
                     let areas = split_rectangle_horizontal(inner_area);
                     self.dcache.unwrap().render(areas[0], buf, state);
+                    // self.icache.unwrap().render(areas[1], buf, state);
                     self.store_queue.unwrap().render(areas[1], buf, state);
+                }
+                SelectedTab::Fetch => {
+                    let areas = split_rectangle_horizontal(inner_area);
+                    self.fetch.unwrap().render(areas[0], buf, state);
+                    self.icache.unwrap().render(areas[1], buf, state);
                 }
             }
         } else {
@@ -272,8 +290,8 @@ impl StatefulWidget for Structures {
                 issue.render(area, buf, state);
             } else if let Some(dcache) = self.dcache {
                 dcache.render(area, buf, state);
-            } else if let Some(facache) = self.facache {
-                facache.render(area, buf, state);
+            } else if let Some(icache) = self.icache {
+                icache.render(area, buf, state);
             } else if let Some(regfile) = self.regfile {
                 regfile.render(area, buf, state);
             } else if let Some(memunit) = self.memunit {

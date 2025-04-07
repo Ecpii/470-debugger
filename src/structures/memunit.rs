@@ -23,22 +23,6 @@ impl MemUnit {
         // check that this is a dcache
         snapshots.get_var(&format!("{base}.dbg_this_is_memunit"))?;
 
-        let mut size = 0;
-        let mut entry_name = format!("{base}.metadata[{size}]");
-
-        while snapshots.get_scope(&entry_name).is_some() {
-            size += 1;
-            entry_name = format!("{base}.metadata[{size}]");
-        }
-
-        let mut num_mshrs = 0;
-        let mut entry_name = format!("{base}.waiting_commands[{num_mshrs}]");
-
-        while snapshots.get_scope(&entry_name).is_some() {
-            num_mshrs += 1;
-            entry_name = format!("{base}.waiting_commands[{num_mshrs}]");
-        }
-
         Some(Self {
             base: base.to_owned(),
         })
