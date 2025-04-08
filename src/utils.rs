@@ -349,8 +349,9 @@ pub fn parse_mem_state(val: &VerilogValue) -> &'static str {
     }
     match val.as_usize() {
         0b00 => "IDLE",
-        0b01 => "LOAD_PENDING",
-        0b10 => "STORE_PENDING",
+        0b01 => "DCACHE_PEDNING",
+        0b10 => "LOAD_PENDING",
+        0b11 => "STORE_PENDING",
         _ => "<invalid>",
     }
 }
