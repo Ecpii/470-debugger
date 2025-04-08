@@ -48,9 +48,9 @@ fn popup_area(area: Rect, percent_x: u16, percent_y: u16) -> Rect {
 
 impl App {
     /// Construct a new instance of [`App`].
-    pub fn new(filename: &str) -> Self {
+    pub fn new(filename: &str, start_clock: usize, debugging_length: usize) -> Self {
         trace_dbg!("start");
-        let snapshots = Snapshots::new(filename).unwrap();
+        let snapshots = Snapshots::new(filename, start_clock, debugging_length).unwrap();
         let structures = Structures::new(&snapshots);
         let search_query = snapshots.get_base() + ".";
         let search_matches = snapshots.autocomplete_var(&search_query);

@@ -211,7 +211,7 @@ pub fn get_header_base(header: &Header) -> String {
 }
 
 impl Snapshots {
-    pub fn new(filename: &str) -> io::Result<Self> {
+    pub fn new(filename: &str, start_clock: usize, debugging_length: usize) -> io::Result<Self> {
         let file = File::open(filename)?;
         let mut parser = vcd::Parser::new(BufReader::new(file));
         let header = parser.parse_header()?;
@@ -247,14 +247,18 @@ impl Snapshots {
 
             match command {
                 Timestamp(time) => {
-                    if time != 0 {
+                    if time != 0 && snapshot.clock_count >= start_clock {
                         shots.push(snapshot.clone());
-                        snapshot.time = time;
                     }
+                    snapshot.time = time;
                 }
                 ChangeScalar(id_code, value) => {
                     if id_code == clock_code && matches!(value, Value::V1) {
                         snapshot.clock_count += 1;
+                        if snapshot.clock_count > start_clock + debugging_length {
+                            shots.push(snapshot.clone());
+                            break;
+                        }
                     }
                     snapshot
                         .variables
