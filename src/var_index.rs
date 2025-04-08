@@ -3,8 +3,6 @@ use std::collections::HashMap;
 use simsearch::{SearchOptions, SimSearch};
 use vcd::{Header, IdCode, Scope, ScopeItem};
 
-use crate::trace_dbg;
-
 pub struct VarIndex {
     pub vars: HashMap<String, IdCode>,
     pub engine: SimSearch<String>,
@@ -34,13 +32,13 @@ impl VarIndex {
                     ScopeItem::Scope(scope) => {
                         let name = prefix.clone() + "." + &scope.identifier;
                         engine.insert(name.clone(), &name);
-                        trace_dbg!(&name);
+                        // trace_dbg!(&name);
                         to_search.push((name, scope.clone()));
                     }
                     ScopeItem::Var(var) => {
                         let name = prefix.clone() + "." + &var.reference;
                         engine.insert(name.clone(), &name);
-                        trace_dbg!(&name);
+                        // trace_dbg!(&name);
                         vars.insert(name, var.code);
                     }
                     _ => {}

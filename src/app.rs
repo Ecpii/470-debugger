@@ -13,7 +13,7 @@ use ratatui::{
 use tui_input::{backend::crossterm::EventHandler, Input};
 use vcd::ScopeItem;
 
-use crate::{snapshots::Snapshots, structures::Structures, trace_dbg};
+use crate::{snapshots::Snapshots, structures::Structures};
 
 #[derive(Clone, Copy, Debug)]
 enum PopupType {
@@ -93,9 +93,9 @@ impl App {
         let tb_clock_count_base = format!("{}.clock_count", self.snapshots.get_base());
         let clock_count =
             if let Some(derived_clock_count) = self.snapshots.get_var(&tb_clock_count_base) {
-                derived_clock_count.as_usize()
+                derived_clock_count.as_decimal()
             } else {
-                snapshot.clock_count
+                snapshot.clock_count.to_string()
             };
 
         let time_marker = format!(
