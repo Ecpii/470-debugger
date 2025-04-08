@@ -48,7 +48,7 @@ impl VerilogValue {
                     })
                 }
 
-                let val = bits.iter().fold(0, |res, new| (res << 1) + new);
+                let val: u64 = bits.iter().fold(0, |res, new| (res << 1) + new);
                 format!("{:#x}", val)
             }
         }
@@ -71,7 +71,7 @@ impl VerilogValue {
                     })
                 }
 
-                let val = bits.iter().fold(0, |res, new| (res << 1) + new);
+                let val: u64 = bits.iter().fold(0, |res, new| (res << 1) + new);
                 val.to_string()
             }
         }
