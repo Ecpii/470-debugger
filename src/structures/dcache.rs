@@ -9,7 +9,6 @@ use ratatui::{
 
 use crate::{
     snapshots::{Snapshots, VerilogValue},
-    trace_dbg,
     utils::{parse_mem_command, parse_mem_size},
 };
 
@@ -235,7 +234,6 @@ impl DCache {
             for (j, (name, is_key)) in MSHR_HEADERS.iter().enumerate() {
                 let string = if *is_key {
                     let full_key = format!("{row_base}.{name}");
-                    trace_dbg!(&full_key);
                     let value = snapshots.get_var(&full_key).unwrap();
 
                     // string that gets displayed in the cell section
@@ -298,7 +296,6 @@ impl DCache {
             for (j, (name, is_key)) in HEADERS.iter().enumerate() {
                 let string = if *is_key {
                     let full_key = format!("{row_base}.{name}");
-                    trace_dbg!(&full_key);
                     let value = snapshots.get_var(&full_key).unwrap();
 
                     if *name == "tag" {

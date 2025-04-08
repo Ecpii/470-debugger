@@ -14,10 +14,7 @@ use ratatui::{
     widgets::{Cell, Row, Table},
 };
 
-use crate::{
-    snapshots::{Snapshots, VerilogValue},
-    trace_dbg,
-};
+use crate::snapshots::{Snapshots, VerilogValue};
 
 #[derive(Clone, Copy)]
 pub enum DisplayType {
@@ -557,11 +554,9 @@ pub fn parse_mem_input_packet<'a>(base: &str, snapshots: &'a Snapshots) -> Row<'
         .get_var(&format!("{base}.valid"))
         .unwrap()
         .is_high();
-    trace_dbg!(base);
 
     for col in MEM_INPUT_HEADERS.iter() {
         if let Some(key) = col.key {
-            trace_dbg!(key);
             let value = snapshots.get_var(&format!("{base}.{key}")).unwrap();
 
             let string = match col.display_type {

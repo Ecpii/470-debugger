@@ -8,7 +8,7 @@ use ratatui::{
     widgets::{Block, Cell, Row, StatefulWidget, Table, Widget},
 };
 
-use crate::{snapshots::Snapshots, trace_dbg};
+use crate::snapshots::Snapshots;
 
 // true if we can use the raw name as the key to index
 const HEADERS: [(&str, bool); 8] = [
@@ -98,7 +98,6 @@ impl StatefulWidget for StoreQueue {
 
                 let string = if *is_key {
                     let full_key = format!("{row_base}.{name}");
-                    trace_dbg!(&full_key);
                     let value = snapshots.get_var(&full_key).unwrap();
 
                     match *name {

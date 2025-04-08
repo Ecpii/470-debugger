@@ -49,7 +49,6 @@ fn popup_area(area: Rect, percent_x: u16, percent_y: u16) -> Rect {
 impl App {
     /// Construct a new instance of [`App`].
     pub fn new(filename: &str, start_clock: usize, debugging_length: usize) -> Self {
-        trace_dbg!("start");
         let snapshots = Snapshots::new(filename, start_clock, debugging_length).unwrap();
         let structures = Structures::new(&snapshots);
         let search_query = snapshots.get_base() + ".";
@@ -90,9 +89,18 @@ impl App {
         let snapshot = self.snapshots.get().unwrap();
         let [first_line, rest] =
             Layout::vertical([Constraint::Length(1), Constraint::Fill(1)]).areas(area);
+
+        let tb_clock_count_base = format!("{}.clock_count", self.snapshots.get_base());
+        let clock_count =
+            if let Some(derived_clock_count) = self.snapshots.get_var(&tb_clock_count_base) {
+                derived_clock_count.as_usize()
+            } else {
+                snapshot.clock_count
+            };
+
         let time_marker = format!(
             "Current Clock Cycle: {}  - Current Time: {}\n",
-            snapshot.clock_count, snapshot.time
+            clock_count, snapshot.time
         );
 
         let mut lines = Vec::new();

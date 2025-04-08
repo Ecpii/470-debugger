@@ -5,7 +5,7 @@ use ratatui::{
     widgets::{Block, Borders, Cell, Row, StatefulWidget, Table, Widget},
 };
 
-use crate::{snapshots::Snapshots, trace_dbg, utils::TOP_BORDER_SET};
+use crate::{snapshots::Snapshots, utils::TOP_BORDER_SET};
 
 // true if we can use the raw name as the key to index
 const HEADERS: [(&str, bool); 8] = [
@@ -74,7 +74,6 @@ impl Issue {
 
     fn parse_fu_input_packet(&self, base: &str, snapshots: &Snapshots) -> Row {
         let mut row_cells: Vec<Cell> = vec![];
-        trace_dbg!(&base);
         let is_valid = snapshots
             .get_var(&format!("{base}.valid"))
             .unwrap()
@@ -83,7 +82,6 @@ impl Issue {
         for (name, is_key) in HEADERS.iter() {
             let full_key = format!("{base}.{name}");
             let string = if *is_key {
-                trace_dbg!(&full_key);
                 let value = snapshots.get_var(&full_key).unwrap();
 
                 // string that gets displayed in the cell section

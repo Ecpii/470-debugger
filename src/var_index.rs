@@ -40,6 +40,7 @@ impl VarIndex {
                     ScopeItem::Var(var) => {
                         let name = prefix.clone() + "." + &var.reference;
                         engine.insert(name.clone(), &name);
+                        trace_dbg!(&name);
                         vars.insert(name, var.code);
                     }
                     _ => {}
