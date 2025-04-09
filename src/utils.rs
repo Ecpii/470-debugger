@@ -340,6 +340,21 @@ pub fn parse_mem_state(val: &VerilogValue) -> &'static str {
     }
 }
 
+pub fn parse_fu_type(val: &VerilogValue) -> &'static str {
+    if val.is_unknown() {
+        return "xxxxx";
+    }
+    match val.as_usize() {
+        0b000 => "NOP",
+        0b001 => "IALU",
+        0b010 => "LOAD",
+        0b011 => "STORE",
+        0b100 => "MULT",
+        0b101 => "BRANCH",
+        _ => "<invalid>",
+    }
+}
+
 struct Column {
     name: &'static str,
     key: Option<&'static str>,
