@@ -14,10 +14,7 @@ use ratatui::{
     widgets::{Cell, Row, Table},
 };
 
-use crate::{
-    snapshots::{Snapshots, VerilogValue},
-    trace_dbg,
-};
+use crate::snapshots::{Snapshots, VerilogValue};
 
 #[derive(Clone, Copy)]
 pub enum DisplayType {

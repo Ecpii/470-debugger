@@ -257,10 +257,13 @@ impl StatefulWidget for Structures {
                     }
                 }
                 SelectedTab::IssueFUs => {
-                    let areas = split_rectangle_horizontal(inner_area);
+                    let [upper_area, lower_area] =
+                        Layout::vertical([Constraint::Fill(1), Constraint::Fill(1)])
+                            .areas(inner_area);
+                    let areas = split_rectangle_horizontal(upper_area);
                     self.issue.unwrap().render(areas[0], buf, state);
                     self.fu.unwrap().render(areas[1], buf, state);
-                    // self.memunit.unwrap().render(areas[1], buf, state);
+                    self.memunit.unwrap().render(lower_area, buf, state);
                 }
                 SelectedTab::Caches => {
                     let areas = split_rectangle_horizontal(inner_area);
