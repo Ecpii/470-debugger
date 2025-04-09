@@ -14,7 +14,10 @@ use ratatui::{
     widgets::{Cell, Row, Table},
 };
 
-use crate::snapshots::{Snapshots, VerilogValue};
+use crate::{
+    snapshots::{Snapshots, VerilogValue},
+    trace_dbg,
+};
 
 #[derive(Clone, Copy)]
 pub enum DisplayType {
@@ -409,10 +412,18 @@ const FU_OUTPUT_HEADERS: [Column; 8] = [
     },
 ];
 
-pub fn parse_fu_output_packets<'a>(bases: &[&str], snapshots: &'a Snapshots) -> Table<'a> {
-    let header = Row::new(FU_OUTPUT_HEADERS.map(|col| col.name))
+pub fn get_fu_output_header() -> Row<'static> {
+    Row::new(FU_OUTPUT_HEADERS.map(|col| col.name))
         .bold()
-        .on_blue();
+        .on_blue()
+}
+
+pub fn get_fu_col_widths() -> [u16; 8] {
+    FU_OUTPUT_HEADERS.map(|col| col.width)
+}
+
+pub fn parse_fu_output_packets<'a>(bases: &[&str], snapshots: &'a Snapshots) -> Table<'a> {
+    let header = get_fu_output_header();
     let widths = FU_OUTPUT_HEADERS.map(|col| col.width);
 
     let rows = bases
@@ -432,7 +443,8 @@ pub fn parse_fu_output_packet<'a>(base: &str, snapshots: &'a Snapshots) -> Row<'
 
     for col in FU_OUTPUT_HEADERS.iter() {
         if let Some(key) = col.key {
-            let value = snapshots.get_var(&format!("{base}.{key}")).unwrap();
+            let full_key = format!("{base}.{key}");
+            let value = snapshots.get_var(&full_key).unwrap();
 
             let string = match col.display_type {
                 DisplayType::Custom => {

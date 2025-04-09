@@ -3,6 +3,7 @@ use branches::Btb;
 use crossterm::event::{KeyCode, KeyEvent};
 use dcache::DCache;
 use facache::FaCache;
+use fu::FU;
 use issue::Issue;
 use memunit::MemUnit;
 use ratatui::buffer::Buffer;
@@ -23,6 +24,7 @@ mod branch_stack;
 mod branches;
 mod dcache;
 mod facache;
+mod fu;
 mod issue;
 mod map_table;
 mod memunit;
@@ -81,6 +83,7 @@ pub struct Structures {
     regfile: Option<RegFile>,
     store_queue: Option<StoreQueue>,
     memunit: Option<MemUnit>,
+    fu: Option<FU>,
     selected_tab: SelectedTab,
 }
 
@@ -112,6 +115,7 @@ impl Structures {
         let mut btb = None;
         let mut issue = None;
         let mut dcache = None;
+        let mut fu = None;
         let mut facache = None;
         let mut regfile = None;
         let mut store_queue = None;
@@ -141,6 +145,7 @@ impl Structures {
                 dcache = DCache::new(&format!("{new_base}.dcache_module"), snapshots);
                 store_queue = StoreQueue::new(&format!("{new_base}.store_queue_module"), snapshots);
                 memunit = MemUnit::new(&format!("{new_base}.memunit_module"), snapshots);
+                fu = FU::new(&format!("{new_base}.fu_module"), snapshots);
 
                 break;
             } else {
@@ -175,6 +180,9 @@ impl Structures {
                 if memunit.is_none() {
                     memunit = MemUnit::new(&new_base, snapshots);
                 }
+                if fu.is_none() {
+                    fu = FU::new(&new_base, snapshots);
+                }
             }
         }
 
@@ -190,6 +198,7 @@ impl Structures {
             regfile,
             store_queue,
             memunit,
+            fu,
             selected_tab: SelectedTab::default(),
         }
     }
@@ -250,7 +259,8 @@ impl StatefulWidget for Structures {
                 SelectedTab::IssueFUs => {
                     let areas = split_rectangle_horizontal(inner_area);
                     self.issue.unwrap().render(areas[0], buf, state);
-                    self.memunit.unwrap().render(areas[1], buf, state);
+                    self.fu.unwrap().render(areas[1], buf, state);
+                    // self.memunit.unwrap().render(areas[1], buf, state);
                 }
                 SelectedTab::Caches => {
                     let areas = split_rectangle_horizontal(inner_area);
