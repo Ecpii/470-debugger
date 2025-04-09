@@ -142,21 +142,6 @@ impl Issue {
         Table::new(rows, WIDTHS).block(block)
     }
 
-    fn get_branch_table(&self, snapshots: &Snapshots) -> Table {
-        let mut rows = Vec::new();
-        for i in 0..self.num_branches {
-            let packet_base = format!("{}.branch_packets[{i}]", self.base);
-            rows.push(self.parse_fu_input_packet(&packet_base, snapshots));
-        }
-
-        let title = Line::from("Branch Packets").bold().centered();
-        let block = Block::new()
-            .border_set(TOP_BORDER_SET)
-            .borders(Borders::TOP | Borders::LEFT | Borders::RIGHT)
-            .title(title);
-        Table::new(rows, WIDTHS).block(block)
-    }
-
     fn get_store_table(&self, snapshots: &Snapshots) -> Table {
         let mut rows = Vec::new();
         for i in 0..self.num_stores {
@@ -177,8 +162,38 @@ impl Issue {
         let row = self.parse_fu_input_packet(&packet_base, snapshots);
 
         let title = Line::from("Load Packet").bold().centered();
-        let block = Block::bordered().border_set(TOP_BORDER_SET).title(title);
+        let block = Block::new()
+            .border_set(TOP_BORDER_SET)
+            .borders(Borders::TOP | Borders::LEFT | Borders::RIGHT)
+            .title(title);
         Table::new([row], WIDTHS).block(block)
+    }
+
+    fn get_branch_table(&self, snapshots: &Snapshots) -> Table {
+        let mut rows = Vec::new();
+        for i in 0..self.num_branches {
+            let packet_base = format!("{}.branch_packets[{i}]", self.base);
+            rows.push(self.parse_fu_input_packet(&packet_base, snapshots));
+        }
+
+        let title = Line::from("Branch Packets").bold().centered();
+        let block = Block::new()
+            .border_set(TOP_BORDER_SET)
+            .borders(Borders::TOP | Borders::LEFT | Borders::RIGHT)
+            .title(title);
+        Table::new(rows, WIDTHS).block(block)
+    }
+
+    fn get_stalling_branch_table(&self, snapshots: &Snapshots) -> Table {
+        let mut rows = Vec::new();
+        for i in 0..self.num_branches {
+            let packet_base = format!("{}.stalling_branch_packets[{i}]", self.base);
+            rows.push(self.parse_fu_input_packet(&packet_base, snapshots));
+        }
+
+        let title = Line::from("Stalling Branch Packets").bold().centered();
+        let block = Block::bordered().border_set(TOP_BORDER_SET).title(title);
+        Table::new(rows, WIDTHS).block(block)
     }
 }
 
@@ -196,19 +211,21 @@ impl StatefulWidget for Issue {
         let inner_area = block.inner(area);
         Widget::render(block, area, buf);
 
-        let areas: [Rect; 5] = Layout::vertical([
+        let areas: [Rect; 6] = Layout::vertical([
             Constraint::Length((1 + 1 + self.num_alus) as u16),
             Constraint::Length((1 + self.num_mults) as u16),
-            Constraint::Length((1 + self.num_branches) as u16),
             Constraint::Length((1 + self.num_stores) as u16),
-            Constraint::Length((2 + 1) as u16),
+            Constraint::Length((1 + 1) as u16),
+            Constraint::Length((1 + self.num_branches) as u16),
+            Constraint::Length((1 + 1 + self.num_branches) as u16),
         ])
         .areas(inner_area);
 
         Widget::render(self.get_alu_table(snapshots), areas[0], buf);
         Widget::render(self.get_mult_table(snapshots), areas[1], buf);
-        Widget::render(self.get_branch_table(snapshots), areas[2], buf);
-        Widget::render(self.get_store_table(snapshots), areas[3], buf);
-        Widget::render(self.get_load_table(snapshots), areas[4], buf);
+        Widget::render(self.get_store_table(snapshots), areas[2], buf);
+        Widget::render(self.get_load_table(snapshots), areas[3], buf);
+        Widget::render(self.get_branch_table(snapshots), areas[4], buf);
+        Widget::render(self.get_stalling_branch_table(snapshots), areas[5], buf);
     }
 }

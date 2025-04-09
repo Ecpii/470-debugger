@@ -7,7 +7,10 @@ use ratatui::{
 
 use crate::{
     snapshots::Snapshots,
-    utils::{get_fu_col_widths, get_fu_output_header, parse_fu_output_packet, TOP_BORDER_SET},
+    utils::{
+        get_branch_output_headers, get_branch_output_widths, get_fu_col_widths,
+        get_fu_output_header, parse_branch_output_packet, parse_fu_output_packet, TOP_BORDER_SET,
+    },
 };
 
 // true if we can use the raw name as the key to index
@@ -101,15 +104,28 @@ impl FU {
         let mut rows = Vec::new();
         for i in 0..self.num_branches {
             let packet_base = format!("{}.branch_output_packets[{i}]", self.base);
-            rows.push(parse_fu_output_packet(&packet_base, snapshots));
+            rows.push(parse_branch_output_packet(&packet_base, snapshots));
         }
 
         let title = Line::from("Branch Packets").bold().centered();
         let block = Block::new()
-            .border_set(TOP_BORDER_SET)
             .borders(Borders::TOP | Borders::LEFT | Borders::RIGHT)
             .title(title);
-        Table::new(rows, get_fu_col_widths()).block(block)
+        Table::new(rows, get_branch_output_widths())
+            .header(get_branch_output_headers())
+            .block(block)
+    }
+
+    fn get_stalling_branch_table<'a>(&self, snapshots: &'a Snapshots) -> Table<'a> {
+        let mut rows = Vec::new();
+        for i in 0..self.num_branches {
+            let packet_base = format!("{}.stalling_branch_output_packets[{i}]", self.base);
+            rows.push(parse_branch_output_packet(&packet_base, snapshots));
+        }
+
+        let title = Line::from("Stalling Branch Packets").bold().centered();
+        let block = Block::bordered().border_set(TOP_BORDER_SET).title(title);
+        Table::new(rows, get_branch_output_widths()).block(block)
     }
 
     fn get_store_table<'a>(&self, snapshots: &'a Snapshots) -> Table<'a> {
@@ -151,19 +167,23 @@ impl StatefulWidget for FU {
         let inner_area = block.inner(area);
         Widget::render(block, area, buf);
 
-        let areas: [Rect; 4] = Layout::vertical([
+        let areas: [Rect; 7] = Layout::vertical([
             Constraint::Length((1 + 1 + self.num_alus) as u16),
             Constraint::Length((1 + self.num_mults) as u16),
-            // Constraint::Length((1 + self.num_branches) as u16),
             Constraint::Length((1 + self.num_stores) as u16),
             Constraint::Length((2 + 1) as u16),
+            Constraint::Length(1),
+            Constraint::Length((1 + 1 + self.num_branches) as u16),
+            Constraint::Length((1 + 1 + self.num_branches) as u16),
         ])
         .areas(inner_area);
 
         Widget::render(self.get_alu_table(snapshots), areas[0], buf);
         Widget::render(self.get_mult_table(snapshots), areas[1], buf);
-        // Widget::render(self.get_branch_table(snapshots), areas[2], buf);
         Widget::render(self.get_store_table(snapshots), areas[2], buf);
         Widget::render(self.get_load_table(snapshots), areas[3], buf);
+
+        Widget::render(self.get_branch_table(snapshots), areas[5], buf);
+        Widget::render(self.get_stalling_branch_table(snapshots), areas[6], buf);
     }
 }
