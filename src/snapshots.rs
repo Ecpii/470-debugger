@@ -31,6 +31,10 @@ impl VerilogValue {
         }
     }
 
+    pub fn as_binary(&self) -> String {
+        format!("{}", self)
+    }
+
     pub fn as_hex(&self) -> String {
         match self {
             VerilogValue::Scalar(value) => {
