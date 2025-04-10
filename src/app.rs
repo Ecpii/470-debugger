@@ -328,6 +328,7 @@ impl App {
             (_, KeyCode::Down | KeyCode::Char('j')) => self.handle_down_key(),
             (_, KeyCode::Up | KeyCode::Char('k')) => self.handle_up_key(),
             (_, KeyCode::Right | KeyCode::Char('l')) => self.handle_right_key(),
+            (_, KeyCode::Char('G')) => self.select_last(),
             _ => {
                 self.structures.on_key_event(key);
             }
@@ -335,10 +336,6 @@ impl App {
     }
 
     fn save_watch_list(&mut self) {
-        if self.watch_list.is_empty() {
-            return;
-        }
-
         if let Err(e) = save_watch_list(&self.watch_list, "last") {
             self.error_message = Some(format!("Error saving watch list: {}", e));
         };
@@ -418,6 +415,10 @@ impl App {
         if !self.watch_list.is_empty() {
             self.watch_list_state.select_next();
         }
+    }
+
+    fn select_last(&mut self) {
+        self.watch_list_state.select_last();
     }
 
     fn increase_jump(&mut self) {
