@@ -33,28 +33,32 @@ impl FU {
         let mut num_branches = 0;
         let mut num_stores = 0;
 
-        let mut entry_name = format!("{base}.alu_output_packets[{num_alus}]");
-        while snapshots.get_scope(&entry_name).is_some() {
+        while snapshots
+            .get_scope(&format!("{base}.alu_output_packets[{num_alus}]"))
+            .is_some()
+        {
             num_alus += 1;
-            entry_name = format!("{base}.alu_output_packets[{num_alus}]");
         }
 
-        entry_name = format!("{base}.mult_output_packets[{num_mults}]");
-        while snapshots.get_scope(&entry_name).is_some() {
+        while snapshots
+            .get_scope(&format!("{base}.mult_output_packets[{num_mults}]"))
+            .is_some()
+        {
             num_mults += 1;
-            entry_name = format!("{base}.mult_output_packets[{num_mults}]");
         }
 
-        entry_name = format!("{base}.branch_output_packets[{num_branches}]");
-        while snapshots.get_scope(&entry_name).is_some() {
+        while snapshots
+            .get_scope(&format!("{base}.branch_output_packets[{num_branches}]"))
+            .is_some()
+        {
             num_branches += 1;
-            entry_name = format!("{base}.branch_output_packets[{num_branches}]");
         }
 
-        entry_name = format!("{base}.store_output_packets[{num_stores}]");
-        while snapshots.get_scope(&entry_name).is_some() {
+        while snapshots
+            .get_scope(&format!("{base}.store_output_packets[{num_stores}]"))
+            .is_some()
+        {
             num_stores += 1;
-            entry_name = format!("{base}.store_output_packets[{num_stores}]");
         }
 
         Some(Self {

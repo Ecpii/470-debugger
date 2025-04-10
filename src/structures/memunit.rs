@@ -6,12 +6,9 @@ use ratatui::{
 };
 
 use crate::{
-    headers::FU_OUTPUT_HEADERS,
+    headers::{FU_OUTPUT_HEADERS, MEM_INPUT_HEADERS},
     snapshots::Snapshots,
-    utils::{
-        parse_mem_command, parse_mem_input_packets, parse_mem_size, parse_mem_state, Columns,
-        TOP_BORDER_SET,
-    },
+    utils::{parse_mem_command, parse_mem_size, parse_mem_state, Columns, TOP_BORDER_SET},
 };
 
 #[derive(Clone, Debug)]
@@ -153,20 +150,21 @@ impl StatefulWidget for MemUnit {
             // self.get_outputs(snapshots),
         ];
 
-        let stored_packet =
-            parse_mem_input_packets(&[&format!("{}.stored_packet", self.base)], snapshots).block(
-                Block::new()
-                    .borders(Borders::TOP | Borders::LEFT | Borders::RIGHT)
-                    .title("stored_packet"),
-            );
-        let next_stored_packet =
-            parse_mem_input_packets(&[&format!("{}.next_stored_packet", self.base)], snapshots)
-                .block(
-                    Block::new()
-                        .borders(Borders::TOP | Borders::LEFT | Borders::RIGHT)
-                        .border_set(TOP_BORDER_SET)
-                        .title("next_stored_packet"),
-                );
+        let columns = Columns::new(MEM_INPUT_HEADERS.to_vec());
+
+        let bases = vec![format!("{}.stored_packet", self.base)];
+        let block = Block::new()
+            .borders(Borders::all().difference(Borders::BOTTOM))
+            .title("stored_packet");
+        let stored_packet = columns.create_table(bases, snapshots).block(block);
+
+        let bases = vec![format!("{}.next_stored_packet", self.base)];
+        let block = Block::bordered()
+            .border_set(TOP_BORDER_SET)
+            .title("stored_packet");
+        let next_stored_packet = columns
+            .create_table_no_header(bases, snapshots)
+            .block(block);
 
         let columns = Columns::new(FU_OUTPUT_HEADERS.to_vec());
 
