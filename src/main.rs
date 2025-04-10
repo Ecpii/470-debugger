@@ -3,6 +3,7 @@ use std::{env, path::Path, process::exit};
 pub use app::App;
 
 pub mod app;
+pub mod headers;
 mod logging;
 pub mod snapshots;
 pub mod structures;

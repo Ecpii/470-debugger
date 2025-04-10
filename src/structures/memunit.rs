@@ -6,10 +6,11 @@ use ratatui::{
 };
 
 use crate::{
+    headers::FU_OUTPUT_HEADERS,
     snapshots::Snapshots,
     utils::{
-        parse_fu_output_packets, parse_mem_command, parse_mem_input_packets, parse_mem_size,
-        parse_mem_state, TOP_BORDER_SET,
+        parse_mem_command, parse_mem_input_packets, parse_mem_size, parse_mem_state, Columns,
+        TOP_BORDER_SET,
     },
 };
 
@@ -166,34 +167,37 @@ impl StatefulWidget for MemUnit {
                         .border_set(TOP_BORDER_SET)
                         .title("next_stored_packet"),
                 );
-        let output_packet =
-            parse_fu_output_packets(&[&format!("{}.output_packet", self.base)], snapshots).block(
-                Block::new()
-                    .borders(Borders::TOP | Borders::LEFT | Borders::RIGHT)
-                    .border_set(TOP_BORDER_SET)
-                    .title("output_packet"),
-            );
-        let next_output_packet =
-            parse_fu_output_packets(&[&format!("{}.next_output_packet", self.base)], snapshots)
-                .block(
-                    Block::bordered()
-                        .border_set(TOP_BORDER_SET)
-                        .title("next_output_packet"),
-                );
 
-        let areas: [Rect; 5] = Layout::vertical([
+        let columns = Columns::new(FU_OUTPUT_HEADERS.to_vec());
+
+        let bases = vec![format!("{}.output_packet", self.base)];
+        let block = Block::new()
+            .borders(Borders::all().difference(Borders::BOTTOM))
+            .title("output_packet");
+        let output_packet = columns.create_table(bases, snapshots).block(block);
+
+        let bases = vec![format!("{}.next_output_packet", self.base)];
+        let block = Block::bordered()
+            .border_set(TOP_BORDER_SET)
+            .title("next_output_packet");
+        let next_output_packet = columns
+            .create_table_no_header(bases, snapshots)
+            .block(block);
+
+        let areas: [Rect; 6] = Layout::vertical([
             Constraint::Length(lines.len() as u16),
             Constraint::Length(3),
             Constraint::Length(3),
+            Constraint::Length(1),
             Constraint::Length(3),
-            Constraint::Length(4),
+            Constraint::Length(3),
         ])
         .areas(inner_area);
 
         Widget::render(Paragraph::new(lines), areas[0], buf);
         Widget::render(stored_packet, areas[1], buf);
         Widget::render(next_stored_packet, areas[2], buf);
-        Widget::render(output_packet, areas[3], buf);
-        Widget::render(next_output_packet, areas[4], buf);
+        Widget::render(output_packet, areas[4], buf);
+        Widget::render(next_output_packet, areas[5], buf);
     }
 }
