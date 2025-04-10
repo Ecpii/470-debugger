@@ -67,10 +67,13 @@ impl StatefulWidget for MapTable {
                         }
                     }
                     "data" => {
+                        let reg_idx_key = format!("{row_base}.value");
+                        let reg_idx = snapshots.get_var(&reg_idx_key).unwrap().as_usize();
+
                         let tb_path = snapshots.get_base();
                         // fixme: hardcoded as hell
                         let data_key =
-                            format!("{tb_path}.o3o.regfile_module.regfile_mem.memData[{i}]");
+                            format!("{tb_path}.o3o.regfile_module.regfile_mem.memData[{reg_idx}]");
 
                         snapshots
                             .get_var(&data_key)
