@@ -1,5 +1,6 @@
 use branch_stack::BranchStack;
 use branches::Btb;
+use complete::Complete;
 use crossterm::event::{KeyCode, KeyEvent};
 use dcache::DCache;
 use facache::FaCache;
@@ -17,11 +18,13 @@ use store_queue::StoreQueue;
 use vcd::ScopeItem;
 
 use crate::snapshots::Snapshots;
+use crate::utils::{split_horizontal, split_vertical};
 use strum::{EnumCount, IntoEnumIterator};
 use strum_macros::{Display, EnumCount as EnumCountMacro, EnumIter, FromRepr};
 
 mod branch_stack;
 mod branches;
+mod complete;
 mod dcache;
 mod facache;
 mod fu;
@@ -84,6 +87,7 @@ pub struct Structures {
     store_queue: Option<StoreQueue>,
     memunit: Option<MemUnit>,
     fu: Option<FU>,
+    complete: Option<Complete>,
     selected_tab: SelectedTab,
 }
 
@@ -120,6 +124,7 @@ impl Structures {
         let mut regfile = None;
         let mut store_queue = None;
         let mut memunit = None;
+        let mut complete = None;
         let mut is_cpu = false;
 
         let base = snapshots.get_base();
@@ -146,6 +151,7 @@ impl Structures {
                 store_queue = StoreQueue::new(&format!("{new_base}.store_queue_module"), snapshots);
                 memunit = MemUnit::new(&format!("{new_base}.memunit_module"), snapshots);
                 fu = FU::new(&format!("{new_base}.fu_module"), snapshots);
+                complete = Complete::new(&format!("{new_base}.complete_module"), snapshots);
 
                 break;
             } else {
@@ -183,6 +189,9 @@ impl Structures {
                 if fu.is_none() {
                     fu = FU::new(&new_base, snapshots);
                 }
+                if complete.is_none() {
+                    complete = Complete::new(&new_base, snapshots);
+                }
             }
         }
 
@@ -198,6 +207,7 @@ impl Structures {
             regfile,
             store_queue,
             memunit,
+            complete,
             fu,
             selected_tab: SelectedTab::default(),
         }
@@ -257,13 +267,14 @@ impl StatefulWidget for Structures {
                     }
                 }
                 SelectedTab::IssueFUs => {
-                    let [upper_area, lower_area] =
-                        Layout::vertical([Constraint::Fill(1), Constraint::Fill(1)])
-                            .areas(inner_area);
-                    let areas = split_rectangle_horizontal(upper_area);
-                    self.issue.unwrap().render(areas[0], buf, state);
-                    self.fu.unwrap().render(areas[1], buf, state);
-                    self.memunit.unwrap().render(lower_area, buf, state);
+                    let [left_area, right_area] = split_horizontal(inner_area);
+                    let [top_left_area, bottom_left_area] = split_vertical(left_area);
+                    let [top_right_area, bottom_right_area] = split_vertical(right_area);
+
+                    self.issue.unwrap().render(top_left_area, buf, state);
+                    self.fu.unwrap().render(top_right_area, buf, state);
+                    self.complete.unwrap().render(bottom_left_area, buf, state);
+                    self.memunit.unwrap().render(bottom_right_area, buf, state);
                 }
                 SelectedTab::Caches => {
                     let areas = split_rectangle_horizontal(inner_area);
@@ -293,6 +304,8 @@ impl StatefulWidget for Structures {
                 memunit.render(area, buf, state);
             } else if let Some(store_queue) = self.store_queue {
                 store_queue.render(area, buf, state);
+            } else if let Some(complete) = self.complete {
+                complete.render(area, buf, state);
             }
         }
     }

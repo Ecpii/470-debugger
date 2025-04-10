@@ -9,6 +9,7 @@ use raki::{
     AOpcode, BaseIOpcode, COpcode, InstFormat, Instruction, OpcodeKind, PrivOpcode, ZifenceiOpcode,
 };
 use ratatui::{
+    layout::{Constraint, Layout, Rect},
     style::Stylize,
     symbols,
     widgets::{Cell, Row, Table},
@@ -355,11 +356,11 @@ pub fn parse_fu_type(val: &VerilogValue) -> &'static str {
     }
 }
 
-struct Column {
-    name: &'static str,
-    key: Option<&'static str>,
-    width: u16,
-    display_type: DisplayType,
+pub struct Column {
+    pub name: &'static str,
+    pub key: Option<&'static str>,
+    pub width: u16,
+    pub display_type: DisplayType,
 }
 
 /*
@@ -487,6 +488,12 @@ pub fn parse_fu_output_packet<'a>(base: &str, snapshots: &'a Snapshots) -> Row<'
 pub const TOP_BORDER_SET: symbols::border::Set = symbols::border::Set {
     top_left: symbols::line::NORMAL.vertical_right,
     top_right: symbols::line::NORMAL.vertical_left,
+    ..symbols::border::PLAIN
+};
+
+pub const LEFT_BORDER_SET: symbols::border::Set = symbols::border::Set {
+    top_left: symbols::line::NORMAL.horizontal_down,
+    bottom_left: symbols::line::NORMAL.horizontal_up,
     ..symbols::border::PLAIN
 };
 
@@ -711,4 +718,77 @@ pub fn parse_branch_output_packet<'a>(base: &str, snapshots: &'a Snapshots) -> R
     }
 
     row
+}
+
+pub struct Columns {
+    columns: Vec<Column>,
+}
+
+impl Columns {
+    pub fn new(columns: Vec<Column>) -> Self {
+        Self { columns }
+    }
+
+    pub fn get_header(&self) -> Row<'static> {
+        Row::new(self.columns.iter().map(|col| col.name))
+            .bold()
+            .on_blue()
+    }
+
+    pub fn get_widths(&self) -> Vec<u16> {
+        self.columns.iter().map(|col| col.width).collect()
+    }
+
+    pub fn create_row<'a>(&self, base: &str, snapshots: &'a Snapshots) -> Row<'a> {
+        let mut cells = Vec::<Cell>::new();
+
+        let is_valid = snapshots
+            .get_var(&format!("{base}.valid"))
+            .unwrap()
+            .is_high();
+
+        for col in self.columns.iter() {
+            if let Some(key) = col.key {
+                let full_key = format!("{base}.{key}");
+                let value = snapshots.get_var(&full_key).unwrap();
+
+                let string = match col.display_type {
+                    DisplayType::Custom => {
+                        unreachable!("No keyed columns have custom display type!")
+                    }
+                    display_type => value.format(&display_type),
+                };
+
+                cells.push(Cell::new(string));
+            } else {
+                unreachable!("no unkeyed columns in branch output headers!")
+            }
+        }
+        let mut row = Row::new(cells);
+
+        // formatting, colors
+        if !is_valid {
+            row = row.dim();
+        }
+
+        row
+    }
+
+    pub fn create_table<'a>(&self, bases: Vec<String>, snapshots: &'a Snapshots) -> Table<'a> {
+        let mut rows = Vec::with_capacity(bases.len());
+
+        for base in bases {
+            rows.push(self.create_row(&base, snapshots));
+        }
+
+        Table::new(rows, self.get_widths()).header(self.get_header())
+    }
+}
+
+pub fn split_vertical(area: Rect) -> [Rect; 2] {
+    Layout::vertical([Constraint::Fill(1), Constraint::Fill(1)]).areas(area)
+}
+
+pub fn split_horizontal(area: Rect) -> [Rect; 2] {
+    Layout::horizontal([Constraint::Fill(1), Constraint::Fill(1)]).areas(area)
 }
