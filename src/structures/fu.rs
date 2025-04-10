@@ -6,12 +6,9 @@ use ratatui::{
 };
 
 use crate::{
-    headers::FU_OUTPUT_HEADERS,
+    headers::{BRANCH_OUTPUT_HEADERS, FU_OUTPUT_HEADERS},
     snapshots::Snapshots,
-    utils::{
-        get_branch_output_headers, get_branch_output_widths, parse_branch_output_packet, Columns,
-        TOP_BORDER_SET,
-    },
+    utils::{Columns, TOP_BORDER_SET},
 };
 
 #[derive(Clone, Debug)]
@@ -129,31 +126,33 @@ impl FU {
     }
 
     fn get_branch_table<'a>(&self, snapshots: &'a Snapshots) -> Table<'a> {
-        let mut rows = Vec::new();
-        for i in 0..self.num_branches {
-            let packet_base = format!("{}.branch_output_packets[{i}]", self.base);
-            rows.push(parse_branch_output_packet(&packet_base, snapshots));
-        }
+        let columns = Columns::new(BRANCH_OUTPUT_HEADERS.to_vec());
+
+        let bases = (0..self.num_branches)
+            .map(|i| format!("{}.branch_output_packets[{i}]", self.base))
+            .collect();
+
+        let table = columns.create_table(bases, snapshots);
 
         let title = Line::from("Branch Packets").bold().centered();
         let block = Block::new()
-            .borders(Borders::TOP | Borders::LEFT | Borders::RIGHT)
+            .borders(Borders::all().difference(Borders::BOTTOM))
             .title(title);
-        Table::new(rows, get_branch_output_widths())
-            .header(get_branch_output_headers())
-            .block(block)
+        table.block(block)
     }
 
     fn get_stalling_branch_table<'a>(&self, snapshots: &'a Snapshots) -> Table<'a> {
-        let mut rows = Vec::new();
-        for i in 0..self.num_branches {
-            let packet_base = format!("{}.stalling_branch_output_packets[{i}]", self.base);
-            rows.push(parse_branch_output_packet(&packet_base, snapshots));
-        }
+        let columns = Columns::new(BRANCH_OUTPUT_HEADERS.to_vec());
+
+        let bases = (0..self.num_branches)
+            .map(|i| format!("{}.stalling_branch_output_packets[{i}]", self.base))
+            .collect();
+
+        let table = columns.create_table_no_header(bases, snapshots);
 
         let title = Line::from("Stalling Branch Packets").bold().centered();
         let block = Block::bordered().border_set(TOP_BORDER_SET).title(title);
-        Table::new(rows, get_branch_output_widths()).block(block)
+        table.block(block)
     }
 }
 
