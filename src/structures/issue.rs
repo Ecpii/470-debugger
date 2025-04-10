@@ -55,7 +55,7 @@ const FU_INPUT_HEADERS: [Column; 8] = [
     },
     Column {
         name: "op",
-        key: Some("op.inst.inst"),
+        key: None,
         width: 20,
         display_type: DisplayType::Binary,
     },

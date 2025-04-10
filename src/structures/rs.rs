@@ -6,7 +6,7 @@ use ratatui::{
 
 use crate::{
     snapshots::{Snapshots, VerilogValue},
-    utils::parse_fu_type,
+    utils::{parse_fu_type, parse_opinfo},
 };
 
 // true if we can use the raw name as the key to index
@@ -105,7 +105,7 @@ impl StatefulWidget for RSTable {
                     i.to_string()
                 } else if *name == "op" {
                     let opinfo_base = format!("{row_base}.op");
-                    snapshots.render_opinfo(&opinfo_base)
+                    parse_opinfo(&opinfo_base, &snapshots)
                 } else if *name == "sq_tag" {
                     let full_key = format!("{row_base}.store_queue_tag");
                     let value = snapshots.get_var(&full_key).unwrap();

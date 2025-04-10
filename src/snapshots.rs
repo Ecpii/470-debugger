@@ -1,12 +1,11 @@
 use im::HashMap;
-use raki::{Decode, Isa};
 use std::fmt::Display;
 use std::io::BufReader;
 use std::ops;
 use std::{fs::File, io};
 use vcd::{self, Header, IdCode, Scope, ScopeItem, Value, Vector};
 
-use crate::utils::{o3oInst, DisplayType};
+use crate::utils::DisplayType;
 use crate::var_index::VarIndex;
 
 pub enum DifferenceType {
@@ -351,20 +350,5 @@ impl Snapshots {
 
     pub fn autocomplete_var(&self, var_name: &str) -> Vec<String> {
         self.var_index.engine.search(var_name)
-    }
-
-    pub fn render_opinfo(&self, base: &str) -> String {
-        let pc = self.get_var(&format!("{base}.PC")).unwrap().as_usize();
-
-        let inst_bits = self
-            .get_var(&format!("{base}.inst.inst"))
-            .unwrap()
-            .as_usize();
-        let Ok(inst) = (inst_bits as u32).decode(Isa::Rv32) else {
-            return format!("{pc}: <invalid>");
-        };
-        let inst = o3oInst(inst);
-
-        format!("{pc:x}: {inst}")
     }
 }

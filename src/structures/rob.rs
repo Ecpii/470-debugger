@@ -8,7 +8,7 @@ use ratatui::{
     widgets::{Block, Cell, Row, StatefulWidget, Table, Widget},
 };
 
-use crate::snapshots::Snapshots;
+use crate::{snapshots::Snapshots, utils::parse_opinfo};
 
 // true if we can use the raw name as the key to index
 const HEADERS: [(&str, bool); 7] = [
@@ -103,7 +103,7 @@ impl StatefulWidget for ROBTable {
                     i.to_string()
                 } else if *name == "op" {
                     let opinfo_base = format!("{row_base}.info");
-                    snapshots.render_opinfo(&opinfo_base)
+                    parse_opinfo(&opinfo_base, &snapshots)
                 } else {
                     unreachable!();
                 };

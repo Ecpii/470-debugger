@@ -6,13 +6,14 @@ use std::{
 };
 
 use raki::{
-    AOpcode, BaseIOpcode, COpcode, InstFormat, Instruction, OpcodeKind, PrivOpcode, ZifenceiOpcode,
+    AOpcode, BaseIOpcode, COpcode, Decode, InstFormat, Instruction, Isa, OpcodeKind, PrivOpcode,
+    ZifenceiOpcode,
 };
 use ratatui::{
     layout::{Constraint, Layout, Rect},
     style::Stylize,
     symbols,
-    widgets::{Borders, Cell, Row, Table},
+    widgets::{Cell, Row, Table},
 };
 
 use crate::snapshots::{Snapshots, VerilogValue};
@@ -470,7 +471,7 @@ pub fn parse_fu_output_packet<'a>(base: &str, snapshots: &'a Snapshots) -> Row<'
         } else {
             assert!(col.name == "op");
 
-            let string = snapshots.render_opinfo(&format!("{base}.op"));
+            let string = parse_opinfo(&format!("{base}.op"), snapshots);
 
             cells.push(Cell::new(string));
         }
@@ -602,7 +603,7 @@ pub fn parse_mem_input_packet<'a>(base: &str, snapshots: &'a Snapshots) -> Row<'
         } else {
             assert!(col.name == "op");
 
-            let string = snapshots.render_opinfo(&format!("{base}.op"));
+            let string = parse_opinfo(&format!("{base}.op"), snapshots);
 
             cells.push(Cell::new(string));
         }
@@ -720,6 +721,21 @@ pub fn parse_branch_output_packet<'a>(base: &str, snapshots: &'a Snapshots) -> R
     row
 }
 
+pub fn parse_opinfo(base: &str, snapshots: &Snapshots) -> String {
+    let pc = snapshots.get_var(&format!("{base}.PC")).unwrap().as_usize();
+
+    let inst_bits = snapshots
+        .get_var(&format!("{base}.inst.inst"))
+        .unwrap()
+        .as_usize();
+    let Ok(inst) = (inst_bits as u32).decode(Isa::Rv32) else {
+        return format!("{pc}: <invalid>");
+    };
+    let inst = o3oInst(inst);
+
+    format!("{pc:x}: {inst}")
+}
+
 pub struct Columns {
     columns: Vec<Column>,
 }
@@ -739,7 +755,12 @@ impl Columns {
         self.columns.iter().map(|col| col.width).collect()
     }
 
-    pub fn create_row<'a>(&self, base: &str, snapshots: &'a Snapshots) -> Row<'a> {
+    pub fn create_row<'a>(
+        &self,
+        base: &str,
+        snapshots: &'a Snapshots,
+        // fallback: Option<fn(&str, &Snapshots, &str) -> String>,
+    ) -> Row<'a> {
         let mut cells = Vec::<Cell>::new();
 
         let is_valid = snapshots
@@ -755,7 +776,14 @@ impl Columns {
                 let string = value.format(&col.display_type);
                 cells.push(Cell::new(string));
             } else {
-                unreachable!("no unkeyed columns in branch output headers!")
+                // let string =
+                //     fallback.expect("unkeyed column with no fallback!")(base, snapshots, col.name);
+                if col.name == "op" {
+                    let base = format!("{base}.{}", col.name);
+                    cells.push(Cell::new(parse_opinfo(&base, snapshots)));
+                } else {
+                    panic!("unrecognized unkeyed column {}", col.name)
+                }
             }
         }
         let mut row = Row::new(cells);
