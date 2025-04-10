@@ -18,24 +18,8 @@ pub struct MemUnit {
 
 impl MemUnit {
     pub fn new(base: &str, snapshots: &Snapshots) -> Option<Self> {
-        // check that this is a dcache
+        // check that this is a memunit
         snapshots.get_var(&format!("{base}.dbg_this_is_memunit"))?;
-
-        let mut size = 0;
-        let mut entry_name = format!("{base}.metadata[{size}]");
-
-        while snapshots.get_scope(&entry_name).is_some() {
-            size += 1;
-            entry_name = format!("{base}.metadata[{size}]");
-        }
-
-        let mut num_mshrs = 0;
-        let mut entry_name = format!("{base}.waiting_commands[{num_mshrs}]");
-
-        while snapshots.get_scope(&entry_name).is_some() {
-            num_mshrs += 1;
-            entry_name = format!("{base}.waiting_commands[{num_mshrs}]");
-        }
 
         Some(Self {
             base: base.to_owned(),
@@ -67,7 +51,6 @@ impl MemUnit {
     fn get_cache_command(&self, snapshots: &Snapshots) -> Line {
         let command_key = format!("{}.cache_query_command", self.base);
         let command = snapshots.get_var(&command_key).unwrap();
-
         let command_string = parse_mem_command(command);
 
         let addr_key = format!("{}.cache_query_addr", self.base);
@@ -75,7 +58,6 @@ impl MemUnit {
 
         let size_key = format!("{}.cache_query_size", self.base);
         let size = snapshots.get_var(&size_key).unwrap();
-
         let size_string = parse_mem_size(size);
 
         let data_key = format!("{}.cache_query_data.dbbl_level", self.base);
