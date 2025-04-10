@@ -499,3 +499,8 @@ pub fn split_vertical(area: Rect) -> [Rect; 2] {
 pub fn split_horizontal(area: Rect) -> [Rect; 2] {
     Layout::horizontal([Constraint::Fill(1), Constraint::Fill(1)]).areas(area)
 }
+
+pub fn _path_predecessor(path: &str) -> String {
+    let parts: Vec<&str> = path.split('.').collect();
+    parts[0..parts.len() - 1].join(".")
+}
