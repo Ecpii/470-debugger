@@ -24,10 +24,10 @@ pub enum VerilogValue {
 impl VerilogValue {
     pub fn format(&self, display_type: &DisplayType) -> String {
         match display_type {
-            DisplayType::Binary => format!("{}", self),
+            DisplayType::Binary => self.as_binary(),
             DisplayType::Decimal => self.as_decimal(),
             DisplayType::Hex => self.as_hex(),
-            DisplayType::Custom => panic!("trying to format custom display type"),
+            DisplayType::Custom(format_fn) => format_fn(self),
         }
     }
 

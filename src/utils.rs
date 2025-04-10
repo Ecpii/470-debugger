@@ -12,7 +12,7 @@ use ratatui::{
     layout::{Constraint, Layout, Rect},
     style::Stylize,
     symbols,
-    widgets::{Cell, Row, Table},
+    widgets::{Borders, Cell, Row, Table},
 };
 
 use crate::snapshots::{Snapshots, VerilogValue};
@@ -22,7 +22,7 @@ pub enum DisplayType {
     Binary,
     Decimal,
     Hex,
-    Custom,
+    Custom(fn(&VerilogValue) -> String),
 }
 impl DisplayType {
     pub fn next(&self) -> Self {
@@ -30,7 +30,7 @@ impl DisplayType {
             DisplayType::Binary => DisplayType::Decimal,
             DisplayType::Decimal => DisplayType::Hex,
             DisplayType::Hex => DisplayType::Binary,
-            DisplayType::Custom => {
+            DisplayType::Custom(_) => {
                 panic!("Shouldn't be able to transition to/from Custom DisplayType")
             }
         }
@@ -45,8 +45,7 @@ impl Display for DisplayType {
                 DisplayType::Binary => "Binary",
                 DisplayType::Decimal => "Decimal",
                 DisplayType::Hex => "Hex",
-                DisplayType::Custom =>
-                    panic!("Shouldn't be able to transition to/from Custom DisplayType"),
+                DisplayType::Custom(_) => panic!("Shouldn't be able to save Custom DisplayType"),
             }
         )
     }
@@ -341,21 +340,22 @@ pub fn parse_mem_state(val: &VerilogValue) -> &'static str {
     }
 }
 
-pub fn parse_fu_type(val: &VerilogValue) -> &'static str {
+pub fn parse_fu_type(val: &VerilogValue) -> String {
     if val.is_unknown() {
-        return "xxxxx";
+        return "xxxxx".to_string();
     }
     match val.as_usize() {
-        0b000 => "NOP",
-        0b001 => "IALU",
-        0b010 => "LOAD",
-        0b011 => "STORE",
-        0b100 => "MULT",
-        0b101 => "BRANCH",
-        _ => "<invalid>",
+        0b000 => "NOP".to_string(),
+        0b001 => "IALU".to_string(),
+        0b010 => "LOAD".to_string(),
+        0b011 => "STORE".to_string(),
+        0b100 => "MULT".to_string(),
+        0b101 => "BRANCH".to_string(),
+        _ => "<invalid>".to_string(),
     }
 }
 
+#[derive(Clone, Copy)]
 pub struct Column {
     pub name: &'static str,
     pub key: Option<&'static str>,
@@ -421,7 +421,7 @@ const FU_OUTPUT_HEADERS: [Column; 8] = [
         name: "op",
         key: None,
         width: 20,
-        display_type: DisplayType::Custom,
+        display_type: DisplayType::Binary,
     },
 ];
 
@@ -460,7 +460,7 @@ pub fn parse_fu_output_packet<'a>(base: &str, snapshots: &'a Snapshots) -> Row<'
             let value = snapshots.get_var(&full_key).unwrap();
 
             let string = match col.display_type {
-                DisplayType::Custom => {
+                DisplayType::Custom(_) => {
                     unreachable!("No keyed columns have custom display type!")
                 }
                 display_type => value.format(&display_type),
@@ -562,7 +562,7 @@ const MEM_INPUT_HEADERS: [Column; 9] = [
         name: "op",
         key: None,
         width: 20,
-        display_type: DisplayType::Custom,
+        display_type: DisplayType::Binary,
     },
 ];
 
@@ -592,7 +592,7 @@ pub fn parse_mem_input_packet<'a>(base: &str, snapshots: &'a Snapshots) -> Row<'
             let value = snapshots.get_var(&format!("{base}.{key}")).unwrap();
 
             let string = match col.display_type {
-                DisplayType::Custom => {
+                DisplayType::Custom(_) => {
                     unreachable!("No keyed columns have custom display type!")
                 }
                 display_type => value.format(&display_type),
@@ -699,7 +699,7 @@ pub fn parse_branch_output_packet<'a>(base: &str, snapshots: &'a Snapshots) -> R
             let value = snapshots.get_var(&full_key).unwrap();
 
             let string = match col.display_type {
-                DisplayType::Custom => {
+                DisplayType::Custom(_) => {
                     unreachable!("No keyed columns have custom display type!")
                 }
                 display_type => value.format(&display_type),
@@ -744,7 +744,7 @@ impl Columns {
 
         let is_valid = snapshots
             .get_var(&format!("{base}.valid"))
-            .unwrap()
+            .unwrap_or(&VerilogValue::Scalar(vcd::Value::V1))
             .is_high();
 
         for col in self.columns.iter() {
@@ -752,13 +752,7 @@ impl Columns {
                 let full_key = format!("{base}.{key}");
                 let value = snapshots.get_var(&full_key).unwrap();
 
-                let string = match col.display_type {
-                    DisplayType::Custom => {
-                        unreachable!("No keyed columns have custom display type!")
-                    }
-                    display_type => value.format(&display_type),
-                };
-
+                let string = value.format(&col.display_type);
                 cells.push(Cell::new(string));
             } else {
                 unreachable!("no unkeyed columns in branch output headers!")
@@ -782,6 +776,20 @@ impl Columns {
         }
 
         Table::new(rows, self.get_widths()).header(self.get_header())
+    }
+
+    pub fn create_table_no_header<'a>(
+        &self,
+        bases: Vec<String>,
+        snapshots: &'a Snapshots,
+    ) -> Table<'a> {
+        let mut rows = Vec::with_capacity(bases.len());
+
+        for base in bases {
+            rows.push(self.create_row(&base, snapshots));
+        }
+
+        Table::new(rows, self.get_widths())
     }
 }
 

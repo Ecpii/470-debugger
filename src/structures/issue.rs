@@ -2,23 +2,64 @@ use ratatui::{
     layout::{Constraint, Layout, Rect},
     style::Stylize,
     text::Line,
-    widgets::{Block, Borders, Cell, Row, StatefulWidget, Table, Widget},
+    widgets::{Block, Borders, StatefulWidget, Table, Widget},
 };
 
-use crate::{snapshots::Snapshots, utils::TOP_BORDER_SET};
+use crate::{
+    snapshots::Snapshots,
+    utils::{Column, Columns, DisplayType, TOP_BORDER_SET},
+};
 
-// true if we can use the raw name as the key to index
-const HEADERS: [(&str, bool); 8] = [
-    ("rd", true),
-    ("rob_num", true),
-    ("rs1_val", true),
-    ("rs2_val", true),
-    ("bmask", true),
-    ("store_queue_tag", true),
-    ("mem_blocks", true),
-    ("op", false),
+const FU_INPUT_HEADERS: [Column; 8] = [
+    Column {
+        name: "rd",
+        key: Some("rd"),
+        width: 3,
+        display_type: DisplayType::Decimal,
+    },
+    Column {
+        name: "rob_num",
+        key: Some("rob_num"),
+        width: 7,
+        display_type: DisplayType::Decimal,
+    },
+    Column {
+        name: "rs1_val",
+        key: Some("rs1_val"),
+        width: 10,
+        display_type: DisplayType::Hex,
+    },
+    Column {
+        name: "rs2_val",
+        key: Some("rs2_val"),
+        width: 10,
+        display_type: DisplayType::Hex,
+    },
+    Column {
+        name: "bmask",
+        key: Some("bmask"),
+        width: 7,
+        display_type: DisplayType::Binary,
+    },
+    Column {
+        name: "sq_tag",
+        key: Some("store_queue_tag"),
+        width: 6,
+        display_type: DisplayType::Decimal,
+    },
+    Column {
+        name: "mem_blocks",
+        key: Some("mem_blocks"),
+        width: 10,
+        display_type: DisplayType::Binary,
+    },
+    Column {
+        name: "op",
+        key: Some("op.inst.inst"),
+        width: 20,
+        display_type: DisplayType::Binary,
+    },
 ];
-const WIDTHS: [u16; 8] = [3, 7, 11, 11, 11, 11, 10, 30];
 
 #[derive(Clone, Debug)]
 pub struct Issue {
@@ -39,28 +80,32 @@ impl Issue {
         let mut num_branches = 0;
         let mut num_stores = 0;
 
-        let mut entry_name = format!("{base}.alu_packets[{num_alus}]");
-        while snapshots.get_scope(&entry_name).is_some() {
+        while snapshots
+            .get_scope(&format!("{base}.alu_packets[{num_alus}]"))
+            .is_some()
+        {
             num_alus += 1;
-            entry_name = format!("{base}.alu_packets[{num_alus}]");
         }
 
-        entry_name = format!("{base}.mult_packets[{num_mults}]");
-        while snapshots.get_scope(&entry_name).is_some() {
+        while snapshots
+            .get_scope(&format!("{base}.mult_packets[{num_mults}]"))
+            .is_some()
+        {
             num_mults += 1;
-            entry_name = format!("{base}.mult_packets[{num_mults}]");
         }
 
-        entry_name = format!("{base}.branch_packets[{num_branches}]");
-        while snapshots.get_scope(&entry_name).is_some() {
+        while snapshots
+            .get_scope(&format!("{base}.branch_packets[{num_branches}]"))
+            .is_some()
+        {
             num_branches += 1;
-            entry_name = format!("{base}.branch_packets[{num_branches}]");
         }
 
-        entry_name = format!("{base}.store_packets[{num_stores}]");
-        while snapshots.get_scope(&entry_name).is_some() {
+        while snapshots
+            .get_scope(&format!("{base}.store_packets[{num_stores}]"))
+            .is_some()
+        {
             num_stores += 1;
-            entry_name = format!("{base}.store_packets[{num_stores}]");
         }
 
         Some(Self {
@@ -72,128 +117,94 @@ impl Issue {
         })
     }
 
-    fn parse_fu_input_packet(&self, base: &str, snapshots: &Snapshots) -> Row {
-        let mut row_cells: Vec<Cell> = vec![];
-        let is_valid = snapshots
-            .get_var(&format!("{base}.valid"))
-            .unwrap()
-            .is_high();
+    fn get_alu_table<'a>(&self, snapshots: &'a Snapshots) -> Table<'a> {
+        let columns = Columns::new(FU_INPUT_HEADERS.to_vec());
 
-        for (name, is_key) in HEADERS.iter() {
-            let full_key = format!("{base}.{name}");
-            let string = if *is_key {
-                let value = snapshots.get_var(&full_key).unwrap();
-
-                // string that gets displayed in the cell section
-                match *name {
-                    "pc" | "target_pc" => value.as_hex(),
-                    "rs1_val" | "rs2_val" | "rd" | "rob_num" => value.as_decimal(),
-                    _ => {
-                        format!("{}", value)
-                    }
-                }
-            } else if *name == "op" {
-                snapshots.render_opinfo(&full_key)
-            } else {
-                unreachable!()
-            };
-
-            row_cells.push(Cell::new(string));
-        }
-
-        let mut row = Row::new(row_cells);
-
-        // formatting, colors
-        if !is_valid {
-            row = row.dim();
-        }
-
-        row.to_owned()
-    }
-
-    fn get_alu_table(&self, snapshots: &Snapshots) -> Table {
-        let header = Row::new(HEADERS.map(|(x, _)| x)).bold().on_blue();
-
-        let mut rows = Vec::new();
-        for i in 0..self.num_alus {
-            let packet_base = format!("{}.alu_packets[{i}]", self.base);
-            rows.push(self.parse_fu_input_packet(&packet_base, snapshots));
-        }
+        let bases = (0..self.num_alus)
+            .map(|i| format!("{}.alu_packets[{i}]", self.base))
+            .collect();
+        let table = columns.create_table(bases, snapshots);
 
         let title = Line::from("ALU Packets").bold().centered();
         let block = Block::new()
-            .borders(Borders::TOP | Borders::LEFT | Borders::RIGHT)
+            .borders(Borders::all().difference(Borders::BOTTOM))
             .title(title);
-        Table::new(rows, WIDTHS).header(header).block(block)
+        table.block(block)
     }
 
-    fn get_mult_table(&self, snapshots: &Snapshots) -> Table {
-        let mut rows = Vec::new();
-        for i in 0..self.num_mults {
-            let packet_base = format!("{}.mult_packets[{i}]", self.base);
-            rows.push(self.parse_fu_input_packet(&packet_base, snapshots));
-        }
+    fn get_mult_table<'a>(&self, snapshots: &'a Snapshots) -> Table<'a> {
+        let columns = Columns::new(FU_INPUT_HEADERS.to_vec());
+
+        let bases = (0..self.num_mults)
+            .map(|i| format!("{}.mult_packets[{i}]", self.base))
+            .collect();
+        let table = columns.create_table_no_header(bases, snapshots);
 
         let title = Line::from("Mult Packets").bold().centered();
         let block = Block::new()
             .border_set(TOP_BORDER_SET)
-            .borders(Borders::TOP | Borders::LEFT | Borders::RIGHT)
+            .borders(Borders::all().difference(Borders::BOTTOM))
             .title(title);
-        Table::new(rows, WIDTHS).block(block)
+        table.block(block)
     }
 
-    fn get_store_table(&self, snapshots: &Snapshots) -> Table {
-        let mut rows = Vec::new();
-        for i in 0..self.num_stores {
-            let packet_base = format!("{}.store_packets[{i}]", self.base);
-            rows.push(self.parse_fu_input_packet(&packet_base, snapshots));
-        }
+    fn get_store_table<'a>(&self, snapshots: &'a Snapshots) -> Table<'a> {
+        let columns = Columns::new(FU_INPUT_HEADERS.to_vec());
+
+        let bases = (0..self.num_stores)
+            .map(|i| format!("{}.store_packets[{i}]", self.base))
+            .collect();
+        let table = columns.create_table_no_header(bases, snapshots);
 
         let title = Line::from("Store Packets").bold().centered();
         let block = Block::new()
             .border_set(TOP_BORDER_SET)
-            .borders(Borders::TOP | Borders::LEFT | Borders::RIGHT)
+            .borders(Borders::all().difference(Borders::BOTTOM))
             .title(title);
-        Table::new(rows, WIDTHS).block(block)
+        table.block(block)
     }
 
-    fn get_load_table(&self, snapshots: &Snapshots) -> Table {
-        let packet_base = format!("{}.load_packet", self.base);
-        let row = self.parse_fu_input_packet(&packet_base, snapshots);
+    fn get_load_table<'a>(&self, snapshots: &'a Snapshots) -> Table<'a> {
+        let columns = Columns::new(FU_INPUT_HEADERS.to_vec());
 
-        let title = Line::from("Load Packet").bold().centered();
+        let bases = vec![format!("{}.load_packet", self.base)];
+        let table = columns.create_table_no_header(bases, snapshots);
+
+        let title = Line::from("Load Packets").bold().centered();
         let block = Block::new()
             .border_set(TOP_BORDER_SET)
-            .borders(Borders::TOP | Borders::LEFT | Borders::RIGHT)
+            .borders(Borders::all().difference(Borders::BOTTOM))
             .title(title);
-        Table::new([row], WIDTHS).block(block)
+        table.block(block)
     }
 
-    fn get_branch_table(&self, snapshots: &Snapshots) -> Table {
-        let mut rows = Vec::new();
-        for i in 0..self.num_branches {
-            let packet_base = format!("{}.branch_packets[{i}]", self.base);
-            rows.push(self.parse_fu_input_packet(&packet_base, snapshots));
-        }
+    fn get_branch_table<'a>(&self, snapshots: &'a Snapshots) -> Table<'a> {
+        let columns = Columns::new(FU_INPUT_HEADERS.to_vec());
+
+        let bases = (0..self.num_branches)
+            .map(|i| format!("{}.branch_packets[{i}]", self.base))
+            .collect();
+        let table = columns.create_table_no_header(bases, snapshots);
 
         let title = Line::from("Branch Packets").bold().centered();
         let block = Block::new()
             .border_set(TOP_BORDER_SET)
-            .borders(Borders::TOP | Borders::LEFT | Borders::RIGHT)
+            .borders(Borders::all().difference(Borders::BOTTOM))
             .title(title);
-        Table::new(rows, WIDTHS).block(block)
+        table.block(block)
     }
 
-    fn get_stalling_branch_table(&self, snapshots: &Snapshots) -> Table {
-        let mut rows = Vec::new();
-        for i in 0..self.num_branches {
-            let packet_base = format!("{}.stalling_branch_packets[{i}]", self.base);
-            rows.push(self.parse_fu_input_packet(&packet_base, snapshots));
-        }
+    fn get_stalling_branch_table<'a>(&self, snapshots: &'a Snapshots) -> Table<'a> {
+        let columns = Columns::new(FU_INPUT_HEADERS.to_vec());
+
+        let bases = (0..self.num_branches)
+            .map(|i| format!("{}.stalling_branch_packets[{i}]", self.base))
+            .collect();
+        let table = columns.create_table_no_header(bases, snapshots);
 
         let title = Line::from("Stalling Branch Packets").bold().centered();
         let block = Block::bordered().border_set(TOP_BORDER_SET).title(title);
-        Table::new(rows, WIDTHS).block(block)
+        table.block(block)
     }
 }
 
