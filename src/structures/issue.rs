@@ -6,60 +6,10 @@ use ratatui::{
 };
 
 use crate::{
+    headers::FU_INPUT_HEADERS,
     snapshots::Snapshots,
-    utils::{Column, Columns, DisplayType, TOP_BORDER_SET},
+    utils::{Columns, TOP_BORDER_SET},
 };
-
-const FU_INPUT_HEADERS: [Column; 8] = [
-    Column {
-        name: "rd",
-        key: Some("rd"),
-        width: 3,
-        display_type: DisplayType::Decimal,
-    },
-    Column {
-        name: "rob_num",
-        key: Some("rob_num"),
-        width: 7,
-        display_type: DisplayType::Decimal,
-    },
-    Column {
-        name: "rs1_val",
-        key: Some("rs1_val"),
-        width: 10,
-        display_type: DisplayType::Hex,
-    },
-    Column {
-        name: "rs2_val",
-        key: Some("rs2_val"),
-        width: 10,
-        display_type: DisplayType::Hex,
-    },
-    Column {
-        name: "bmask",
-        key: Some("bmask"),
-        width: 7,
-        display_type: DisplayType::Binary,
-    },
-    Column {
-        name: "sq_tag",
-        key: Some("store_queue_tag"),
-        width: 6,
-        display_type: DisplayType::Decimal,
-    },
-    Column {
-        name: "mem_blocks",
-        key: Some("mem_blocks"),
-        width: 10,
-        display_type: DisplayType::Binary,
-    },
-    Column {
-        name: "op",
-        key: None,
-        width: 20,
-        display_type: DisplayType::Binary,
-    },
-];
 
 #[derive(Clone, Debug)]
 pub struct Issue {

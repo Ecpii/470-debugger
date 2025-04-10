@@ -7,6 +7,70 @@ use crate::utils::{Column, DisplayType};
 /*
 typedef struct packed {
   logic valid;
+  DATA rs1_val;
+  DATA rs2_val;
+  reg_idx_t rd;
+  op_info_t op;
+  bmask_t bmask;
+  rob_num_t rob_num;
+  store_queue_num_t store_queue_tag;
+  logic [3:0] mem_blocks;
+} fu_input_packet_t;
+*/
+pub const FU_INPUT_HEADERS: [Column; 8] = [
+    Column {
+        name: "rd",
+        key: Some("rd"),
+        width: 3,
+        display_type: DisplayType::Decimal,
+    },
+    Column {
+        name: "rob_num",
+        key: Some("rob_num"),
+        width: 7,
+        display_type: DisplayType::Decimal,
+    },
+    Column {
+        name: "bmask",
+        key: Some("bmask"),
+        width: 7,
+        display_type: DisplayType::Binary,
+    },
+    Column {
+        name: "sq_tag",
+        key: Some("store_queue_tag"),
+        width: 6,
+        display_type: DisplayType::Decimal,
+    },
+    Column {
+        name: "mem_blocks",
+        key: Some("mem_blocks"),
+        width: 10,
+        display_type: DisplayType::Binary,
+    },
+    Column {
+        name: "rs1_val",
+        key: Some("rs1_val"),
+        width: 10,
+        display_type: DisplayType::Hex,
+    },
+    Column {
+        name: "rs2_val",
+        key: Some("rs2_val"),
+        width: 10,
+        display_type: DisplayType::Hex,
+    },
+    Column {
+        name: "op",
+        key: None,
+        width: 20,
+        display_type: DisplayType::Binary,
+    },
+];
+
+/*
+typedef struct packed {
+  logic valid;
   op_info_t op;
   bmask_t bmask;
   reg_idx_t rd;
@@ -39,7 +103,7 @@ pub const FU_OUTPUT_HEADERS: [Column; 8] = [
     Column {
         name: "sq_tag",
         key: Some("store_queue_tag"),
-        width: 7,
+        width: 6,
         display_type: DisplayType::Decimal,
     },
     Column {
@@ -102,7 +166,7 @@ pub const MEM_INPUT_HEADERS: [Column; 9] = [
     Column {
         name: "sq_tag",
         key: Some("store_queue_tag"),
-        width: 7,
+        width: 6,
         display_type: DisplayType::Decimal,
     },
     Column {
