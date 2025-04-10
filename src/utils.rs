@@ -160,7 +160,23 @@ impl Display for o3oInst {
                 reg2str(self.0.rs1.unwrap()),
                 self.0.imm.unwrap()
             ),
-            InstFormat::CsFormat | InstFormat::SFormat | InstFormat::BFormat => write!(
+            InstFormat::SFormat => write!(
+                f,
+                "{} {}, {}({})",
+                self.0.opc,
+                reg2str(self.0.rs2.unwrap()),
+                self.0.imm.unwrap(),
+                reg2str(self.0.rs1.unwrap()),
+            ),
+            InstFormat::BFormat => write!(
+                f,
+                "{} {}, {}, {}",
+                self.0.opc,
+                reg2str(self.0.rs1.unwrap()),
+                reg2str(self.0.rs2.unwrap()),
+                self.0.imm.unwrap(),
+            ),
+            InstFormat::CsFormat => write!(
                 f,
                 "{} {}, {}({})",
                 self.0.opc,
@@ -356,14 +372,6 @@ pub fn parse_fu_type(val: &VerilogValue) -> String {
     }
 }
 
-#[derive(Clone, Copy)]
-pub struct Column {
-    pub name: &'static str,
-    pub key: Option<&'static str>,
-    pub width: u16,
-    pub display_type: DisplayType,
-}
-
 pub const TOP_BORDER_SET: symbols::border::Set = symbols::border::Set {
     top_left: symbols::line::NORMAL.vertical_right,
     top_right: symbols::line::NORMAL.vertical_left,
@@ -389,6 +397,14 @@ pub fn parse_opinfo(base: &str, snapshots: &Snapshots) -> String {
     let inst = o3oInst(inst);
 
     format!("{pc:x}: {inst}")
+}
+
+#[derive(Clone, Copy)]
+pub struct Column {
+    pub name: &'static str,
+    pub key: Option<&'static str>,
+    pub width: u16,
+    pub display_type: DisplayType,
 }
 
 pub struct Columns {

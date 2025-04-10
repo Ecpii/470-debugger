@@ -105,7 +105,7 @@ impl StatefulWidget for RSTable {
                     i.to_string()
                 } else if *name == "op" {
                     let opinfo_base = format!("{row_base}.op");
-                    parse_opinfo(&opinfo_base, &snapshots)
+                    parse_opinfo(&opinfo_base, snapshots)
                 } else if *name == "sq_tag" {
                     let full_key = format!("{row_base}.store_queue_tag");
                     let value = snapshots.get_var(&full_key).unwrap();

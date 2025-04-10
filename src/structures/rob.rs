@@ -103,7 +103,7 @@ impl StatefulWidget for ROBTable {
                     i.to_string()
                 } else if *name == "op" {
                     let opinfo_base = format!("{row_base}.info");
-                    parse_opinfo(&opinfo_base, &snapshots)
+                    parse_opinfo(&opinfo_base, snapshots)
                 } else {
                     unreachable!();
                 };
