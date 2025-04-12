@@ -6,11 +6,9 @@ use ratatui::{
 };
 
 use crate::{
+    headers::{FU_OUTPUT_HEADERS, MEM_INPUT_HEADERS},
     snapshots::Snapshots,
-    utils::{
-        parse_fu_output_packets, parse_mem_command, parse_mem_input_packets, parse_mem_size,
-        parse_mem_state, TOP_BORDER_SET,
-    },
+    utils::{parse_mem_command, parse_mem_size, parse_mem_state, Columns, TOP_BORDER_SET},
 };
 
 #[derive(Clone, Debug)]
@@ -20,7 +18,7 @@ pub struct MemUnit {
 
 impl MemUnit {
     pub fn new(base: &str, snapshots: &Snapshots) -> Option<Self> {
-        // check that this is a dcache
+        // check that this is a memunit
         snapshots.get_var(&format!("{base}.dbg_this_is_memunit"))?;
 
         Some(Self {
@@ -53,7 +51,6 @@ impl MemUnit {
     fn get_cache_command(&self, snapshots: &Snapshots) -> Line {
         let command_key = format!("{}.cache_query_command", self.base);
         let command = snapshots.get_var(&command_key).unwrap();
-
         let command_string = parse_mem_command(command);
 
         let addr_key = format!("{}.cache_query_addr", self.base);
@@ -61,7 +58,6 @@ impl MemUnit {
 
         let size_key = format!("{}.cache_query_size", self.base);
         let size = snapshots.get_var(&size_key).unwrap();
-
         let size_string = parse_mem_size(size);
 
         let data_key = format!("{}.cache_query_data.dbbl_level", self.base);
@@ -136,48 +132,52 @@ impl StatefulWidget for MemUnit {
             // self.get_outputs(snapshots),
         ];
 
-        let stored_packet =
-            parse_mem_input_packets(&[&format!("{}.stored_packet", self.base)], snapshots).block(
-                Block::new()
-                    .borders(Borders::TOP | Borders::LEFT | Borders::RIGHT)
-                    .title("stored_packet"),
-            );
-        let next_stored_packet =
-            parse_mem_input_packets(&[&format!("{}.next_stored_packet", self.base)], snapshots)
-                .block(
-                    Block::new()
-                        .borders(Borders::TOP | Borders::LEFT | Borders::RIGHT)
-                        .border_set(TOP_BORDER_SET)
-                        .title("next_stored_packet"),
-                );
-        let output_packet =
-            parse_fu_output_packets(&[&format!("{}.output_packet", self.base)], snapshots).block(
-                Block::new()
-                    .borders(Borders::TOP | Borders::LEFT | Borders::RIGHT)
-                    .border_set(TOP_BORDER_SET)
-                    .title("output_packet"),
-            );
-        let next_output_packet =
-            parse_fu_output_packets(&[&format!("{}.next_output_packet", self.base)], snapshots)
-                .block(
-                    Block::bordered()
-                        .border_set(TOP_BORDER_SET)
-                        .title("next_output_packet"),
-                );
+        let columns = Columns::new(MEM_INPUT_HEADERS.to_vec());
 
-        let areas: [Rect; 5] = Layout::vertical([
+        let bases = vec![format!("{}.stored_packet", self.base)];
+        let block = Block::new()
+            .borders(Borders::all().difference(Borders::BOTTOM))
+            .title("stored_packet");
+        let stored_packet = columns.create_table(bases, snapshots).block(block);
+
+        let bases = vec![format!("{}.next_stored_packet", self.base)];
+        let block = Block::bordered()
+            .border_set(TOP_BORDER_SET)
+            .title("stored_packet");
+        let next_stored_packet = columns
+            .create_table_no_header(bases, snapshots)
+            .block(block);
+
+        let columns = Columns::new(FU_OUTPUT_HEADERS.to_vec());
+
+        let bases = vec![format!("{}.output_packet", self.base)];
+        let block = Block::new()
+            .borders(Borders::all().difference(Borders::BOTTOM))
+            .title("output_packet");
+        let output_packet = columns.create_table(bases, snapshots).block(block);
+
+        let bases = vec![format!("{}.next_output_packet", self.base)];
+        let block = Block::bordered()
+            .border_set(TOP_BORDER_SET)
+            .title("next_output_packet");
+        let next_output_packet = columns
+            .create_table_no_header(bases, snapshots)
+            .block(block);
+
+        let areas: [Rect; 6] = Layout::vertical([
             Constraint::Length(lines.len() as u16),
             Constraint::Length(3),
             Constraint::Length(3),
+            Constraint::Length(1),
             Constraint::Length(3),
-            Constraint::Length(4),
+            Constraint::Length(3),
         ])
         .areas(inner_area);
 
         Widget::render(Paragraph::new(lines), areas[0], buf);
         Widget::render(stored_packet, areas[1], buf);
         Widget::render(next_stored_packet, areas[2], buf);
-        Widget::render(output_packet, areas[3], buf);
-        Widget::render(next_output_packet, areas[4], buf);
+        Widget::render(output_packet, areas[4], buf);
+        Widget::render(next_output_packet, areas[5], buf);
     }
 }

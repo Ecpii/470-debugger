@@ -8,7 +8,7 @@ use ratatui::{
     widgets::{Block, Cell, Row, StatefulWidget, Table, Widget},
 };
 
-use crate::{snapshots::Snapshots, trace_dbg};
+use crate::{snapshots::Snapshots, utils::parse_opinfo};
 
 // true if we can use the raw name as the key to index
 const HEADERS: [(&str, bool); 7] = [
@@ -78,8 +78,7 @@ impl StatefulWidget for ROBTable {
                     if i == head_index {
                         if i == tail_index {
                             row_cells.push(Cell::new(Text::from("h|t").centered()).bold())
-                        }
-                        else{
+                        } else {
                             row_cells.push(Cell::new(Text::from(" h ").centered()).bold())
                         }
                     } else if i == tail_index {
@@ -92,7 +91,6 @@ impl StatefulWidget for ROBTable {
 
                 let string = if *is_key {
                     let full_key = format!("{row_base}.{name}");
-                    trace_dbg!(&full_key);
                     let value = snapshots.get_var(&full_key).unwrap();
 
                     match *name {
@@ -105,7 +103,7 @@ impl StatefulWidget for ROBTable {
                     i.to_string()
                 } else if *name == "op" {
                     let opinfo_base = format!("{row_base}.info");
-                    snapshots.render_opinfo(&opinfo_base)
+                    parse_opinfo(&opinfo_base, snapshots)
                 } else {
                     unreachable!();
                 };
@@ -120,15 +118,15 @@ impl StatefulWidget for ROBTable {
             if i == head_index {
                 if i == tail_index {
                     row = row.on_light_magenta()
-                }
-                else{
+                } else {
                     row = row.on_green()
                 }
             } else if i == tail_index {
                 row = row.on_red()
             } else if (tail_index > head_index && head_index < i && i < tail_index)
                 || (tail_index < head_index && !(tail_index < i && i < head_index))
-                || (head_index == tail_index && rob_size > 0) // full case
+                || (head_index == tail_index && rob_size > 0)
+            // full case
             {
                 row = row.on_yellow()
             } else {

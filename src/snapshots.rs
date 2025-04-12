@@ -5,7 +5,7 @@ use std::ops;
 use std::{fs::File, io};
 use vcd::{self, Header, IdCode, Scope, ScopeItem, Value, Vector};
 
-use crate::utils::{parse_inst, DisplayType};
+use crate::utils::DisplayType;
 use crate::var_index::VarIndex;
 
 pub enum DifferenceType {
@@ -23,11 +23,15 @@ pub enum VerilogValue {
 impl VerilogValue {
     pub fn format(&self, display_type: &DisplayType) -> String {
         match display_type {
-            DisplayType::Binary => format!("{}", self),
+            DisplayType::Binary => self.as_binary(),
             DisplayType::Decimal => self.as_decimal(),
             DisplayType::Hex => self.as_hex(),
-            DisplayType::Custom => panic!("trying to format custom display type"),
+            DisplayType::Custom(format_fn) => format_fn(self),
         }
+    }
+
+    pub fn as_binary(&self) -> String {
+        format!("{}", self)
     }
 
     pub fn as_hex(&self) -> String {
@@ -47,7 +51,7 @@ impl VerilogValue {
                     })
                 }
 
-                let val = bits.iter().fold(0, |res, new| (res << 1) + new);
+                let val: u64 = bits.iter().fold(0, |res, new| (res << 1) + new);
                 format!("{:#x}", val)
             }
         }
@@ -70,7 +74,7 @@ impl VerilogValue {
                     })
                 }
 
-                let val = bits.iter().fold(0, |res, new| (res << 1) + new);
+                let val: u64 = bits.iter().fold(0, |res, new| (res << 1) + new);
                 val.to_string()
             }
         }
@@ -210,7 +214,7 @@ pub fn get_header_base(header: &Header) -> String {
 }
 
 impl Snapshots {
-    pub fn new(filename: &str) -> io::Result<Self> {
+    pub fn new(filename: &str, start_clock: usize, debugging_length: usize) -> io::Result<Self> {
         let file = File::open(filename)?;
         let mut parser = vcd::Parser::new(BufReader::new(file));
         let header = parser.parse_header()?;
@@ -246,14 +250,18 @@ impl Snapshots {
 
             match command {
                 Timestamp(time) => {
-                    if time != 0 {
+                    if time != 0 && snapshot.clock_count >= start_clock {
                         shots.push(snapshot.clone());
-                        snapshot.time = time;
                     }
+                    snapshot.time = time;
                 }
                 ChangeScalar(id_code, value) => {
                     if id_code == clock_code && matches!(value, Value::V1) {
                         snapshot.clock_count += 1;
+                        if snapshot.clock_count > start_clock + debugging_length {
+                            shots.push(snapshot.clone());
+                            break;
+                        }
                     }
                     snapshot
                         .variables
@@ -342,12 +350,5 @@ impl Snapshots {
 
     pub fn autocomplete_var(&self, var_name: &str) -> Vec<String> {
         self.var_index.engine.search(var_name)
-    }
-
-    pub fn render_opinfo(&self, base: &str) -> String {
-        let pc = self.get_var(&format!("{base}.PC")).unwrap().as_usize();
-        let inst = parse_inst(&format!("{base}.inst"), self);
-
-        format!("{pc:x}: {inst}")
     }
 }

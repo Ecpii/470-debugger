@@ -9,7 +9,6 @@ use ratatui::{
 
 use crate::{
     snapshots::Snapshots,
-    trace_dbg,
     utils::{parse_mem_command, parse_mem_size},
 };
 
@@ -228,7 +227,6 @@ impl FaCache {
             for (j, (name, is_key)) in MSHR_HEADERS.iter().enumerate() {
                 let string = if *is_key {
                     let full_key = format!("{row_base}.{name}");
-                    trace_dbg!(&full_key);
                     let value = snapshots.get_var(&full_key).unwrap();
 
                     // string that gets displayed in the cell section
@@ -243,8 +241,8 @@ impl FaCache {
                 } else if *name == "addr" {
                     let tag = snapshots.get_var(&format!("{row_base}.addr.tag")).unwrap();
                     // let block_num = snapshots
-                        // .get_var(&format!("{row_base}.addr.block_num"))
-                        // .unwrap();
+                    // .get_var(&format!("{row_base}.addr.block_num"))
+                    // .unwrap();
                     let offset = snapshots
                         .get_var(&format!("{row_base}.addr.block_offset"))
                         .unwrap();
@@ -291,7 +289,6 @@ impl FaCache {
             for (j, (name, is_key)) in HEADERS.iter().enumerate() {
                 let string = if *is_key {
                     let full_key = format!("{row_base}.{name}");
-                    trace_dbg!(&full_key);
                     let value = snapshots.get_var(&full_key).unwrap();
 
                     // string that gets displayed in the cell section

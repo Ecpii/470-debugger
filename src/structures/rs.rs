@@ -1,5 +1,3 @@
-use std::cmp::max;
-
 use ratatui::{
     style::Stylize,
     text::Line,
@@ -8,7 +6,7 @@ use ratatui::{
 
 use crate::{
     snapshots::{Snapshots, VerilogValue},
-    trace_dbg,
+    utils::{parse_fu_type, parse_opinfo},
 };
 
 // true if we can use the raw name as the key to index
@@ -20,11 +18,11 @@ const HEADERS: [(&str, bool); 10] = [
     ("bmask", true),
     ("fu", true),
     ("rob_num", true),
-    ("store_queue_tag", true),
+    ("sq_tag", false),
     ("mem_blocks", true),
     ("op", false),
 ];
-const FU_TYPES: [&str; 6] = ["NOP", "IALU", "LD", "STR", "MULT", "BRANCH"];
+const WIDTHS: [u16; 10] = [1, 8, 7, 7, 7, 6, 7, 6, 10, 20];
 
 #[derive(Clone, Debug)]
 pub struct RSTable {
@@ -50,15 +48,6 @@ impl RSTable {
             size: i,
         })
     }
-
-    fn format_fu(&self, value: &VerilogValue) -> String {
-        if value.is_unknown() {
-            return String::from("xxx");
-        }
-
-        let n = value.as_usize();
-        String::from(FU_TYPES.get(n).copied().unwrap_or("<invalid>"))
-    }
 }
 
 impl StatefulWidget for RSTable {
@@ -70,7 +59,6 @@ impl StatefulWidget for RSTable {
         buf: &mut ratatui::prelude::Buffer,
         snapshots: &mut Self::State,
     ) {
-        let mut widths: Vec<u16> = HEADERS.iter().map(|(x, _)| x.len() as u16).collect();
         let header = Row::new(HEADERS.map(|(x, _)| x)).bold().on_blue();
 
         let mut rows = Vec::new();
@@ -80,10 +68,9 @@ impl StatefulWidget for RSTable {
             let mut is_valid = true;
             let row_base = format!("{}.entries[{i}]", self.base);
 
-            for (j, (name, is_key)) in HEADERS.iter().enumerate() {
+            for (name, is_key) in HEADERS.iter() {
                 let string = if *is_key {
                     let full_key = format!("{row_base}.{name}");
-                    trace_dbg!(&full_key);
                     let value = snapshots.get_var(&full_key).unwrap();
 
                     if *name == "fu" && (value.is_low() || value.is_unknown()) {
@@ -94,7 +81,6 @@ impl StatefulWidget for RSTable {
                     match *name {
                         "rs1_tag" => {
                             let plus_key = format!("{row_base}.rs1_ready");
-                            trace_dbg!(&plus_key);
                             let plus = snapshots
                                 .get_var(&plus_key)
                                 .is_some_and(VerilogValue::is_high);
@@ -109,8 +95,8 @@ impl StatefulWidget for RSTable {
 
                             value.as_decimal() + if plus { "+" } else { "" }
                         }
-                        "dest_tag" | "rob_num" | "store_queue_tag" => value.as_decimal(),
-                        "fu" => self.format_fu(value),
+                        "dest_tag" | "rob_num" => value.as_decimal(),
+                        "fu" => parse_fu_type(value).to_owned(),
                         _ => {
                             format!("{}", value)
                         }
@@ -119,14 +105,16 @@ impl StatefulWidget for RSTable {
                     i.to_string()
                 } else if *name == "op" {
                     let opinfo_base = format!("{row_base}.op");
-                    snapshots.render_opinfo(&opinfo_base)
+                    parse_opinfo(&opinfo_base, snapshots)
+                } else if *name == "sq_tag" {
+                    let full_key = format!("{row_base}.store_queue_tag");
+                    let value = snapshots.get_var(&full_key).unwrap();
+                    value.as_decimal()
                 } else {
                     unreachable!()
                 };
 
-                let width = string.len();
                 row_cells.push(Cell::new(string));
-                widths[j] = max(widths[j], width as u16);
             }
 
             let mut row = Row::new(row_cells);
@@ -155,7 +143,7 @@ impl StatefulWidget for RSTable {
 
         let title = Line::from("Reservation Station").bold().centered();
         let block = Block::bordered().title(title);
-        let table = Table::new(rows, widths).header(header).block(block);
+        let table = Table::new(rows, WIDTHS).header(header).block(block);
         Widget::render(table, area, buf);
     }
 }

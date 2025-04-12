@@ -1,5 +1,3 @@
-use std::cmp::max;
-
 use ratatui::{
     buffer::Buffer,
     layout::Rect,
@@ -8,9 +6,10 @@ use ratatui::{
     widgets::{Block, Cell, Row, StatefulWidget, Table, Widget},
 };
 
-use crate::snapshots::Snapshots;
+use crate::snapshots::{Snapshots, VerilogValue};
 
-const HEADERS: [(&str, bool); 2] = [("arch_reg", false), ("phys_reg", false)];
+const HEADERS: [&str; 3] = ["arch_reg", "phys_reg", "data"];
+const WIDTHS: [u16; 3] = [8, 8, 10];
 
 #[derive(Clone)]
 pub struct MapTable {
@@ -39,8 +38,7 @@ impl StatefulWidget for MapTable {
     type State = Snapshots;
 
     fn render(self, area: Rect, buf: &mut Buffer, snapshots: &mut Self::State) {
-        let mut widths: Vec<u16> = HEADERS.iter().map(|(x, _)| x.len() as u16).collect();
-        let header = Row::new(HEADERS.map(|(x, _)| x)).bold().on_blue();
+        let header = Row::new(HEADERS).bold().on_blue();
 
         let mut rows = Vec::new();
 
@@ -50,7 +48,7 @@ impl StatefulWidget for MapTable {
 
             let mut ready = false;
 
-            for (j, (name, _)) in HEADERS.iter().enumerate() {
+            for name in HEADERS.iter() {
                 let string: String = match *name {
                     "arch_reg" => i.to_string(),
                     "phys_reg" => {
@@ -68,14 +66,26 @@ impl StatefulWidget for MapTable {
                             string
                         }
                     }
+                    "data" => {
+                        let reg_idx_key = format!("{row_base}.value");
+                        let reg_idx = snapshots.get_var(&reg_idx_key).unwrap().as_usize();
+
+                        let tb_path = snapshots.get_base();
+                        // fixme: hardcoded as hell
+                        let data_key =
+                            format!("{tb_path}.o3o.regfile_module.regfile_mem.memData[{reg_idx}]");
+
+                        snapshots
+                            .get_var(&data_key)
+                            .map(VerilogValue::as_hex)
+                            .unwrap_or(String::from("couldn't get data!"))
+                    }
                     _ => {
                         unreachable!()
                     }
                 };
 
-                let width = string.len();
                 row_cells.push(Cell::new(string));
-                widths[j] = max(widths[j], width as u16);
             }
 
             let mut row = Row::new(row_cells);
@@ -87,7 +97,7 @@ impl StatefulWidget for MapTable {
 
         let title = Line::from("Map Table").bold().centered();
         let block = Block::bordered().title(title);
-        let table = Table::new(rows, widths).header(header).block(block);
+        let table = Table::new(rows, WIDTHS).header(header).block(block);
         Widget::render(table, area, buf);
     }
 }
