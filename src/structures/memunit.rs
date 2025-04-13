@@ -143,7 +143,7 @@ impl StatefulWidget for MemUnit {
         let bases = vec![format!("{}.next_stored_packet", self.base)];
         let block = Block::bordered()
             .border_set(TOP_BORDER_SET)
-            .title("stored_packet");
+            .title("next_stored_packet");
         let next_stored_packet = columns
             .create_table_no_header(bases, snapshots)
             .block(block);

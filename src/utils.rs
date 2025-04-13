@@ -454,10 +454,12 @@ impl Columns {
         for col in self.columns.iter() {
             if let Some(key) = col.key {
                 let full_key = format!("{base}.{key}");
-                let value = snapshots.get_var(&full_key).unwrap();
-
-                let string = value.format(&col.display_type);
-                cells.push(Cell::new(string));
+                if let Some(value) = snapshots.get_var(&full_key) {
+                    let string = value.format(&col.display_type);
+                    cells.push(Cell::new(string));
+                } else {
+                    cells.push(Cell::new("<missing>"));
+                }
             } else {
                 // let string =
                 //     fallback.expect("unkeyed column with no fallback!")(base, snapshots, col.name);
