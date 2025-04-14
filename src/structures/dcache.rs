@@ -8,7 +8,7 @@ use ratatui::{
 use crate::{
     headers::{DCACHE_META_HEADERS, MSHR_HEADERS},
     snapshots::{Snapshots, VerilogValue},
-    utils::{parse_mem_command, parse_mem_size, Columns, COLORS, TOP_BORDER_SET},
+    utils::{parse_mem_command, parse_mem_size, Columns, COLORS},
 };
 
 #[derive(Clone, Debug)]
@@ -100,7 +100,7 @@ impl DCache {
             .as_decimal();
 
         let write_enable = snapshots
-            .get_var(&format!("{}.read_enable", self.base))
+            .get_var(&format!("{}.write_enable", self.base))
             .unwrap()
             .is_high();
         let write_index = snapshots
