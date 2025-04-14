@@ -250,7 +250,10 @@ impl DCache {
                         }
                         "addr" => {
                             let tag = snapshots.get_var(&format!("{row_base}.tag")).unwrap();
-                            let set_num = VerilogValue::from_usize(set_num, self.num_sets);
+                            let set_num = VerilogValue::from_usize(
+                                set_num,
+                                self.num_sets.ilog2().try_into().unwrap(),
+                            );
                             let block_offset = VerilogValue::from_usize(0, 3);
 
                             let addr = tag + &(&set_num + &block_offset);

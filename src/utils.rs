@@ -469,12 +469,12 @@ impl Columns {
                     "#" => num.to_string(),
                     "addr" => {
                         let tag = snapshots.get_var(&format!("{base}.addr.tag")).unwrap();
-                        let block_num = snapshots.get_var(&format!("{base}.addr.set_num")).unwrap();
+                        let set_num = snapshots.get_var(&format!("{base}.addr.set_num")).unwrap();
                         let offset = snapshots
                             .get_var(&format!("{base}.addr.block_offset"))
                             .unwrap();
 
-                        let addr = &(tag + block_num) + offset;
+                        let addr = &(tag + set_num) + offset;
 
                         addr.as_hex()
                     }
