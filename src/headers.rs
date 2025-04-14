@@ -323,11 +323,23 @@ pub const MSHR_HEADERS: [Column; 7] = [
     },
 ];
 
-pub const DCACHE_META_HEADERS: [Column; 6] = [
+pub const DCACHE_META_HEADERS: [Column; 8] = [
     Column {
         name: "#",
         key: None,
         width: 2,
+        display_type: DisplayType::Decimal,
+    },
+    Column {
+        name: "set_num",
+        key: None,
+        width: 7,
+        display_type: DisplayType::Decimal,
+    },
+    Column {
+        name: "set_idx",
+        key: None,
+        width: 7,
         display_type: DisplayType::Decimal,
     },
     Column {
@@ -357,7 +369,7 @@ pub const DCACHE_META_HEADERS: [Column; 6] = [
     Column {
         name: "data",
         key: None,
-        width: 10,
+        width: 18,
         display_type: DisplayType::Hex,
     },
 ];

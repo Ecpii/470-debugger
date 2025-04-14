@@ -8,7 +8,7 @@ use ratatui::{
 use crate::{
     headers::{DCACHE_META_HEADERS, MSHR_HEADERS},
     snapshots::{Snapshots, VerilogValue},
-    utils::{parse_mem_command, parse_mem_size, Columns, TOP_BORDER_SET},
+    utils::{parse_mem_command, parse_mem_size, Columns, COLORS, TOP_BORDER_SET},
 };
 
 #[derive(Clone, Debug)]
@@ -257,12 +257,20 @@ impl DCache {
 
                             addr.as_hex()
                         }
-                        "#" => set_index.to_string(),
+                        "set_num" => set_num.to_string(),
+                        "set_idx" => set_index.to_string(),
+                        "#" => index.to_string(),
                         _ => unreachable!(),
                     }
                 };
 
-                cells.push(Cell::new(string))
+                let mut cell = Cell::new(string);
+
+                if col.name == "set_num" || col.name == "set_idx" {
+                    cell = cell.bg(COLORS[set_num % 12])
+                }
+
+                cells.push(cell)
             }
 
             let mut row = Row::new(cells);
@@ -286,32 +294,22 @@ impl DCache {
         let columns = Columns::new(DCACHE_META_HEADERS.to_vec());
         let header = columns.get_header();
         let widths = columns.get_widths();
-        let mut constraints = vec![Constraint::Length(2)];
+        let mut constraints = vec![Constraint::Length(1)];
 
         let title = Line::from("Metadata").bold().centered();
-        let top_block = Block::new()
-            .borders(Borders::all().difference(Borders::BOTTOM))
-            .title(title);
+        let block = Block::bordered().title(title);
+        let inner_area = block.inner(area);
+        let header_table = Table::new([header], widths);
 
-        let header_table = Table::new([header], widths).block(top_block);
         let mut tables = Vec::with_capacity(self.num_sets);
-
         for set_num in 0..self.num_sets {
-            let title = format!("Set {set_num}");
-
-            let mut block = if set_num != self.num_sets - 1 {
-                Block::new().borders(Borders::all().difference(Borders::BOTTOM))
-            } else {
-                Block::bordered()
-            };
-            block = block.border_set(TOP_BORDER_SET).title(title);
-
-            tables.push(self.get_set_table(set_num, snapshots).block(block));
-            constraints.push(Constraint::Length(self.num_ways as u16 + 1));
+            tables.push(self.get_set_table(set_num, snapshots));
+            constraints.push(Constraint::Length(self.num_ways as u16));
         }
 
-        let areas = Layout::vertical(constraints).split(area);
+        let areas = Layout::vertical(constraints).split(inner_area);
 
+        Widget::render(block, area, buf);
         Widget::render(header_table, areas[0], buf);
         for (table, area) in tables.iter().zip(areas.iter().skip(1)) {
             Widget::render(table, *area, buf);

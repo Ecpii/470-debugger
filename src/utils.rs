@@ -11,7 +11,7 @@ use raki::{
 };
 use ratatui::{
     layout::{Constraint, Layout, Rect},
-    style::Stylize,
+    style::{Color, Stylize},
     symbols,
     widgets::{Cell, Row, Table},
 };
@@ -532,3 +532,20 @@ pub fn _path_predecessor(path: &str) -> String {
     let parts: Vec<&str> = path.split('.').collect();
     parts[0..parts.len() - 1].join(".")
 }
+
+pub const COLORS: [Color; 12] = [
+    Color::Red,
+    Color::Green,
+    Color::Yellow,
+    Color::Blue,
+    Color::Magenta,
+    Color::Cyan,
+    // Color::Gray,
+    // Color::DarkGray,
+    Color::LightRed,
+    Color::LightGreen,
+    Color::LightYellow,
+    Color::LightBlue,
+    Color::LightMagenta,
+    Color::LightCyan,
+];
