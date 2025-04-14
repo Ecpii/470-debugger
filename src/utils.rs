@@ -343,16 +343,16 @@ pub fn parse_mem_command(val: &VerilogValue) -> &'static str {
     }
 }
 
-pub fn parse_mem_size(val: &VerilogValue) -> &'static str {
+pub fn parse_mem_size(val: &VerilogValue) -> String {
     if val.is_unknown() {
-        return "xxxxx";
+        return "xxxxx".to_string();
     }
     match val.as_usize() {
-        0b00 => "BYTE",
-        0b01 => "HALF",
-        0b10 => "WORD",
-        0b11 => "DOUBLE",
-        _ => "<invalid>",
+        0b00 => "BYTE".to_string(),
+        0b01 => "HALF".to_string(),
+        0b10 => "WORD".to_string(),
+        0b11 => "DOUBLE".to_string(),
+        _ => "<invalid>".to_string(),
     }
 }
 
@@ -442,7 +442,7 @@ impl Columns {
         &self,
         base: &str,
         snapshots: &'a Snapshots,
-        // fallback: Option<fn(&str, &Snapshots, &str) -> String>,
+        num: usize, // fallback: Option<fn(&str, &Snapshots, &str) -> String>,
     ) -> Row<'a> {
         let mut cells = Vec::<Cell>::new();
 
@@ -461,14 +461,28 @@ impl Columns {
                     cells.push(Cell::new("<missing>"));
                 }
             } else {
-                // let string =
-                //     fallback.expect("unkeyed column with no fallback!")(base, snapshots, col.name);
-                if col.name == "op" {
-                    let base = format!("{base}.{}", col.name);
-                    cells.push(Cell::new(parse_opinfo(&base, snapshots)));
-                } else {
-                    panic!("unrecognized unkeyed column {}", col.name)
-                }
+                let string = match col.name {
+                    "op" => {
+                        let base = format!("{base}.{}", col.name);
+                        parse_opinfo(&base, snapshots)
+                    }
+                    "#" => num.to_string(),
+                    "addr" => {
+                        let tag = snapshots.get_var(&format!("{base}.addr.tag")).unwrap();
+                        let block_num = snapshots.get_var(&format!("{base}.addr.set_num")).unwrap();
+                        let offset = snapshots
+                            .get_var(&format!("{base}.addr.block_offset"))
+                            .unwrap();
+
+                        let addr = &(tag + block_num) + offset;
+
+                        addr.as_hex()
+                    }
+                    _ => {
+                        panic!("unrecognized unkeyed column {}", col.name)
+                    }
+                };
+                cells.push(Cell::new(string));
             }
         }
         let mut row = Row::new(cells);
@@ -484,8 +498,8 @@ impl Columns {
     pub fn create_table<'a>(&self, bases: Vec<String>, snapshots: &'a Snapshots) -> Table<'a> {
         let mut rows = Vec::with_capacity(bases.len());
 
-        for base in bases {
-            rows.push(self.create_row(&base, snapshots));
+        for (num, base) in bases.iter().enumerate() {
+            rows.push(self.create_row(base, snapshots, num));
         }
 
         Table::new(rows, self.get_widths()).header(self.get_header())
@@ -498,8 +512,8 @@ impl Columns {
     ) -> Table<'a> {
         let mut rows = Vec::with_capacity(bases.len());
 
-        for base in bases {
-            rows.push(self.create_row(&base, snapshots));
+        for (num, base) in bases.iter().enumerate() {
+            rows.push(self.create_row(base, snapshots, num));
         }
 
         Table::new(rows, self.get_widths())

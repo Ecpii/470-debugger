@@ -2,7 +2,7 @@
  * HEADERS variables that specify the columns to display for different
  * structs and how to fetch/format them.
  */
-use crate::utils::{Column, DisplayType};
+use crate::utils::{parse_mem_size, Column, DisplayType};
 
 /*
 typedef struct packed {
@@ -255,5 +255,109 @@ pub const BRANCH_OUTPUT_HEADERS: [Column; 7] = [
         key: Some("branch_packet.pht_index"),
         width: 9,
         display_type: DisplayType::Decimal,
+    },
+];
+
+/*
+typedef struct packed {
+  logic valid; // whether or not we actually are waiting for something
+  logic ready; // complete_data holds correct data that can be sent to the output
+
+  MEM_TAG mem_tag; // tag we are waiting for from memory
+
+  bmask_t bmask;
+
+  // query data
+  DCACHE_ADDR addr; // original addr, not block aligned
+                    // the block we request and get back will be block aligned i think though
+                    // stored just in case we do something fancy later
+  MEM_SIZE size;
+  logic is_store;
+  DATA store_data;
+
+  DATA complete_data;
+} dcache_mshr_t;
+ */
+pub const MSHR_HEADERS: [Column; 7] = [
+    Column {
+        name: "#",
+        key: None,
+        width: 2,
+        display_type: DisplayType::Decimal,
+    },
+    Column {
+        name: "mem_tag",
+        key: Some("mem_tag"),
+        width: 7,
+        display_type: DisplayType::Decimal,
+    },
+    Column {
+        name: "bmask",
+        key: Some("bmask"),
+        width: 7,
+        display_type: DisplayType::Binary,
+    },
+    Column {
+        name: "addr",
+        key: None,
+        width: 5,
+        display_type: DisplayType::Hex,
+    },
+    Column {
+        name: "size",
+        key: Some("size"),
+        width: 6,
+        display_type: DisplayType::Custom(parse_mem_size),
+    },
+    Column {
+        name: "is_store",
+        key: Some("is_store"),
+        width: 8,
+        display_type: DisplayType::Binary,
+    },
+    Column {
+        name: "store_data",
+        key: Some("store_data"),
+        width: 10,
+        display_type: DisplayType::Hex,
+    },
+];
+
+pub const DCACHE_META_HEADERS: [Column; 6] = [
+    Column {
+        name: "#",
+        key: None,
+        width: 2,
+        display_type: DisplayType::Decimal,
+    },
+    Column {
+        name: "dirty",
+        key: Some("dirty"),
+        width: 5,
+        display_type: DisplayType::Binary,
+    },
+    Column {
+        name: "tag",
+        key: Some("tag"),
+        width: 6,
+        display_type: DisplayType::Hex,
+    },
+    Column {
+        name: "addr",
+        key: None,
+        width: 5,
+        display_type: DisplayType::Hex,
+    },
+    Column {
+        name: "lru",
+        key: Some("lru"),
+        width: 3,
+        display_type: DisplayType::Decimal,
+    },
+    Column {
+        name: "data",
+        key: None,
+        width: 10,
+        display_type: DisplayType::Hex,
     },
 ];

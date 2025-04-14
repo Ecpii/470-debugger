@@ -1,41 +1,21 @@
-use std::cmp::max;
-
 use ratatui::{
     layout::{Constraint, Layout},
     style::Stylize,
     text::Line,
-    widgets::{Block, Cell, Paragraph, Row, StatefulWidget, Table, Widget},
+    widgets::{Block, Borders, Cell, Paragraph, Row, StatefulWidget, Table, Widget},
 };
 
 use crate::{
+    headers::{DCACHE_META_HEADERS, MSHR_HEADERS},
     snapshots::{Snapshots, VerilogValue},
-    utils::{parse_mem_command, parse_mem_size},
+    utils::{parse_mem_command, parse_mem_size, Columns, TOP_BORDER_SET},
 };
-
-// true if we can use the raw name as the key to index
-const HEADERS: [(&str, bool); 5] = [
-    ("#", false),
-    ("dirty", true),
-    ("tag", true),
-    ("addr", false),
-    // ("lru", true),
-    ("data", false),
-];
-
-const MSHR_HEADERS: [(&str, bool); 7] = [
-    ("#", false),
-    ("mem_tag", true),
-    ("bmask", true),
-    ("addr", false),
-    ("size", true),
-    ("is_store", true),
-    ("store_data", true),
-];
 
 #[derive(Clone, Debug)]
 pub struct DCache {
     base: String,
-    pub size: usize,
+    num_ways: usize,
+    num_sets: usize,
     num_mshrs: usize,
 }
 
@@ -44,25 +24,34 @@ impl DCache {
         // check that this is a dcache
         snapshots.get_var(&format!("{base}.dbg_this_is_dcache"))?;
 
-        let mut size = 0;
-        let mut entry_name = format!("{base}.metadata[{size}]");
+        let mut num_ways = 0;
+        while snapshots
+            .get_scope(&format!("{base}.metadata[0][{num_ways}]"))
+            .is_some()
+        {
+            num_ways += 1;
+        }
 
-        while snapshots.get_scope(&entry_name).is_some() {
-            size += 1;
-            entry_name = format!("{base}.metadata[{size}]");
+        let mut num_sets = 0;
+        while snapshots
+            .get_scope(&format!("{base}.metadata[{num_sets}][0]"))
+            .is_some()
+        {
+            num_sets += 1;
         }
 
         let mut num_mshrs = 0;
-        let mut entry_name = format!("{base}.waiting_commands[{num_mshrs}]");
-
-        while snapshots.get_scope(&entry_name).is_some() {
+        while snapshots
+            .get_scope(&format!("{base}.waiting_commands[{num_mshrs}]"))
+            .is_some()
+        {
             num_mshrs += 1;
-            entry_name = format!("{base}.waiting_commands[{num_mshrs}]");
         }
 
         Some(Self {
             base: base.to_owned(),
-            size,
+            num_ways,
+            num_sets,
             num_mshrs,
         })
     }
@@ -217,129 +206,116 @@ impl DCache {
         Line::from(parts)
     }
 
-    fn get_mshr_table(&self, snapshots: &Snapshots) -> Table {
-        let mut widths: Vec<u16> = MSHR_HEADERS.iter().map(|(x, _)| x.len() as u16).collect();
-        let header = Row::new(MSHR_HEADERS.map(|(x, _)| x)).bold().on_blue();
+    fn get_mshr_table<'a>(&self, snapshots: &'a Snapshots) -> Table<'a> {
+        let columns = Columns::new(MSHR_HEADERS.to_vec());
 
-        let mut rows = Vec::new();
+        let bases = (0..self.num_mshrs)
+            .map(|i| format!("{}.waiting_commands[{i}]", self.base))
+            .collect();
+        let table = columns.create_table(bases, snapshots);
 
-        for i in 0..self.num_mshrs {
-            let mut row_cells: Vec<Cell> = vec![];
-            let row_base = format!("{}.waiting_commands[{i}]", self.base);
-            let is_valid = snapshots
-                .get_var(&format!("{row_base}.valid"))
-                .unwrap()
-                .is_high();
-
-            for (j, (name, is_key)) in MSHR_HEADERS.iter().enumerate() {
-                let string = if *is_key {
-                    let full_key = format!("{row_base}.{name}");
-                    let value = snapshots.get_var(&full_key).unwrap();
-
-                    // string that gets displayed in the cell section
-                    match *name {
-                        "mem_tag" => value.as_decimal(),
-                        "store_data" => value.as_hex(),
-                        "size" => parse_mem_size(value).to_string(),
-                        _ => format!("{}", value),
-                    }
-                } else if *name == "#" {
-                    i.to_string()
-                } else if *name == "addr" {
-                    let tag = snapshots.get_var(&format!("{row_base}.addr.tag")).unwrap();
-                    let block_num = snapshots
-                        .get_var(&format!("{row_base}.addr.block_num"))
-                        .unwrap();
-                    let offset = snapshots
-                        .get_var(&format!("{row_base}.addr.block_offset"))
-                        .unwrap();
-
-                    let addr = &(tag + block_num) + offset;
-
-                    addr.as_hex()
-                } else {
-                    unreachable!()
-                };
-
-                let width = string.len();
-                widths[j] = max(widths[j], width as u16);
-                row_cells.push(Cell::new(string));
-            }
-
-            let mut row = Row::new(row_cells);
-
-            // formatting, colors
-            if !is_valid {
-                row = row.dim();
-            }
-
-            rows.push(row)
-        }
-
-        Table::new(rows, widths).header(header)
+        let title = Line::from("MSHRs").bold().centered();
+        let block = Block::new()
+            .borders(Borders::all().difference(Borders::BOTTOM))
+            .title(title);
+        table.block(block)
     }
 
-    fn get_table(&self, snapshots: &Snapshots) -> Table {
-        let mut widths: Vec<u16> = HEADERS.iter().map(|(x, _)| x.len() as u16).collect();
-        let header = Row::new(HEADERS.map(|(x, _)| x)).bold().on_blue();
+    fn get_set_table(&self, set_num: usize, snapshots: &Snapshots) -> Table {
+        let columns = Columns::new(DCACHE_META_HEADERS.to_vec());
+        let widths = columns.get_widths();
 
         let mut rows = Vec::new();
-
-        for i in 0..self.size {
-            let mut row_cells: Vec<Cell> = vec![];
-            let row_base = format!("{}.metadata[{i}]", self.base);
+        for set_index in 0..self.num_ways {
+            let mut cells = Vec::<Cell>::new();
+            let row_base = format!("{}.metadata[{set_num}][{set_index}]", self.base);
+            let index = set_num * self.num_ways + set_index;
             let is_valid = snapshots
                 .get_var(&format!("{row_base}.valid"))
                 .unwrap()
                 .is_high();
 
-            for (j, (name, is_key)) in HEADERS.iter().enumerate() {
-                let string = if *is_key {
-                    let full_key = format!("{row_base}.{name}");
+            for col in DCACHE_META_HEADERS {
+                let string = if let Some(key) = col.key {
+                    let full_key = format!("{row_base}.{key}");
                     let value = snapshots.get_var(&full_key).unwrap();
 
-                    if *name == "tag" {
-                        value.as_hex()
-                    } else {
-                        format!("{}", value)
-                    }
+                    value.format(&col.display_type)
                 } else {
-                    match *name {
+                    match col.name {
                         "data" => {
-                            let key = format!("{}.dcache_mem.memData[{i}]", self.base);
+                            let key = format!("{}.dcache_mem.memData[{index}]", self.base);
                             let value = snapshots.get_var(&key).unwrap().as_hex();
                             value
                         }
                         "addr" => {
                             let tag = snapshots.get_var(&format!("{row_base}.tag")).unwrap();
-                            let block_num = VerilogValue::from_usize(i, self.size.ilog2() as usize);
+                            let set_num = VerilogValue::from_usize(set_num, self.num_sets);
                             let block_offset = VerilogValue::from_usize(0, 3);
 
-                            let addr = tag + &(&block_num + &block_offset);
+                            let addr = tag + &(&set_num + &block_offset);
 
                             addr.as_hex()
                         }
-                        "#" => i.to_string(),
+                        "#" => set_index.to_string(),
                         _ => unreachable!(),
                     }
                 };
 
-                let width = string.len();
-                widths[j] = max(widths[j], width as u16);
-                row_cells.push(Cell::new(string));
+                cells.push(Cell::new(string))
             }
 
-            let mut row = Row::new(row_cells);
+            let mut row = Row::new(cells);
 
-            // formatting, colors
             if !is_valid {
                 row = row.dim();
             }
 
-            rows.push(row)
+            rows.push(row);
         }
 
-        Table::new(rows, widths).header(header)
+        Table::new(rows, widths)
+    }
+
+    fn render_table(
+        &self,
+        area: ratatui::prelude::Rect,
+        buf: &mut ratatui::prelude::Buffer,
+        snapshots: &Snapshots,
+    ) {
+        let columns = Columns::new(DCACHE_META_HEADERS.to_vec());
+        let header = columns.get_header();
+        let widths = columns.get_widths();
+        let mut constraints = vec![Constraint::Length(2)];
+
+        let title = Line::from("Metadata").bold().centered();
+        let top_block = Block::new()
+            .borders(Borders::all().difference(Borders::BOTTOM))
+            .title(title);
+
+        let header_table = Table::new([header], widths).block(top_block);
+        let mut tables = Vec::with_capacity(self.num_sets);
+
+        for set_num in 0..self.num_sets {
+            let title = format!("Set {set_num}");
+
+            let mut block = if set_num != self.num_sets - 1 {
+                Block::new().borders(Borders::all().difference(Borders::BOTTOM))
+            } else {
+                Block::bordered()
+            };
+            block = block.border_set(TOP_BORDER_SET).title(title);
+
+            tables.push(self.get_set_table(set_num, snapshots).block(block));
+            constraints.push(Constraint::Length(self.num_ways as u16 + 1));
+        }
+
+        let areas = Layout::vertical(constraints).split(area);
+
+        Widget::render(header_table, areas[0], buf);
+        for (table, area) in tables.iter().zip(areas.iter().skip(1)) {
+            Widget::render(table, *area, buf);
+        }
     }
 }
 
@@ -364,9 +340,6 @@ impl StatefulWidget for DCache {
             self.get_outputs(snapshots),
         ];
 
-        let metadata_table = self
-            .get_table(snapshots)
-            .block(Block::bordered().title(Line::from("Metadata").bold().centered()));
         let mshr_table = self
             .get_mshr_table(snapshots)
             .block(Block::bordered().title(Line::from("MSHRs").bold().centered()));
@@ -378,7 +351,7 @@ impl StatefulWidget for DCache {
 
         let [left, right] =
             Layout::horizontal([Constraint::Fill(1), Constraint::Fill(1)]).areas(rest);
-        Widget::render(metadata_table, left, buf);
+        self.render_table(left, buf, snapshots);
         Widget::render(mshr_table, right, buf);
     }
 }
