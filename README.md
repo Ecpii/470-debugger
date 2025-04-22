@@ -68,7 +68,3 @@ scp target/x86_64-unknown-linux-gnu/release/debugger <your uniqname>@login.engin
 ```
 
 Remember to change the username and path for your CAEN credentials and desired path!
-- make highlighted watches editable
-- make highlighted watches rearrangable
-- support changing watch type (binary, decimal, hex, etc.)
-- make tables scrollable
