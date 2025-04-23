@@ -22,7 +22,7 @@ const HEADERS: [(&str, bool); 10] = [
     ("mem_blocks", true),
     ("op", false),
 ];
-const WIDTHS: [u16; 10] = [1, 8, 7, 7, 7, 6, 7, 6, 10, 20];
+const WIDTHS: [u16; 10] = [2, 8, 7, 7, 7, 6, 7, 6, 10, 20];
 
 #[derive(Clone, Debug)]
 pub struct RSTable {
